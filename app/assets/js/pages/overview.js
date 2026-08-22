@@ -50,7 +50,7 @@ export function relayLayerProviders(providers, index) {
 
 function header(agentName, days) {
   return `<div class="page-head overview-head"><h1 class="page-title">Workspace overview</h1><div class="page-controls">
-    <label class="chip chip--select" for="overviewRange">${icon.calendar}<select id="overviewRange" aria-label="Overview date range"><option value="1" ${days === 1 ? "selected" : ""}>Last 24 hours</option><option value="7" ${days === 7 ? "selected" : ""}>Last 7 days</option><option value="30" ${days === 30 ? "selected" : ""}>Last 30 days</option></select>${icon.chevronDown}</label>
+    <label class="chip chip--select" for="overviewRange">${icon.calendar}<select id="overviewRange" aria-label="Overview date range">${activityRangeOptions(days)}</select>${icon.chevronDown}</label>
     <span class="chip"><span class="status-dot status-dot--ok" aria-hidden="true"></span>${escapeHtml(agentName)}</span>
     <span class="chip chip--mono">${icon.terminal}<span>127.0.0.1:9090</span></span>
   </div></div>`;
@@ -243,7 +243,7 @@ function kpiCard(kpi, days) {
   return `<article class="card control-room-card control-room-card--metric kpi"><span class="kpi__icon kpi__icon--${kpi.tone}">${icon[kpi.icon]}</span>
     <div class="kpi__value">${kpi.value}${kpi.unit ? `<small>${kpi.unit}</small>` : ""}</div>
     <div class="kpi__label">${kpi.label}</div>
-    <div class="kpi__delta"><span class="kpi__note">${days === 1 ? "last 24 hours" : `last ${days} days`}</span></div>
+    <div class="kpi__delta"><span class="kpi__note">${activityRangeLabel(days).toLowerCase()}</span></div>
   </article>`;
 }
 
@@ -275,8 +275,9 @@ function startOfDay(date) {
 function lineChart(events, days) {
   const W = 660, H = 168, L = 34, R = 6, T = 6, B = 24;
   const pw = W - L - R, ph = H - T - B;
-  const pointCount = days === 1 ? 7 : days === 7 ? 7 : 10;
-  const end = Date.now(), start = end - days * 86400000, bucketSize = (end - start) / pointCount;
+  const pointCount = days === 1 ? 7 : 10;
+  const { start, end } = activityRangeWindow(events, days);
+  const bucketSize = (end - start) / pointCount;
   const buckets = Array.from({ length: pointCount }, (_, index) => new Date(start + bucketSize * index));
   const counts = buckets.map(() => ({ success: 0, failed: 0 }));
   for (const event of events) {
@@ -294,7 +295,8 @@ function lineChart(events, days) {
     const value = Math.round(peak * frac);
     return `<line class="lc-grid" x1="${L}" x2="${W - R}" y1="${y(value).toFixed(1)}" y2="${y(value).toFixed(1)}"/><text class="lc-ylabel" x="${L - 8}" y="${(y(value) + 3.5).toFixed(1)}" text-anchor="end">${value}</text>`;
   }).join("");
-  const xlabels = buckets.map((date, i) => `<text class="lc-xlabel" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${days === 1 ? date.toLocaleTimeString("en-US", { hour: "numeric" }) : `${date.toLocaleString("en-US", { weekday: "short" })} ${date.getDate()}`}</text>`).join("");
+  const formatXLabel = date => days === 1 ? date.toLocaleTimeString("en-US", { hour: "numeric" }) : days === 0 ? date.toLocaleString("en-US", { month: "short", day: "numeric" }) : `${date.toLocaleString("en-US", { weekday: "short" })} ${date.getDate()}`;
+  const xlabels = buckets.map((date, i) => `<text class="lc-xlabel" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${formatXLabel(date)}</text>`).join("");
   return `<article class="card control-room-card control-room-card--chart chart-card">
     <div class="card-head"><h2 class="card-title">Requests over time</h2><div class="chart-legend"><span class="chart-legend__item"><i class="lc-swatch lc-swatch--success"></i>Successful</span><span class="chart-legend__item"><i class="lc-swatch lc-swatch--failed"></i>Failed</span></div></div>
     <svg class="line-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Line chart of successful and failed requests over the selected range">
@@ -358,7 +360,7 @@ function recentCard(events) {
   </article>`;
 }
 
-export async function renderOverview(workspace, days = 7) {
+export async function renderOverview(workspace, days = readActivityRange()) {
   if (isClaude()) {
     await renderClaudeOverview(workspace);
     return;
@@ -379,7 +381,7 @@ export async function renderOverview(workspace, days = 7) {
   workspace.innerHTML = `${header(agentName, days)}<div class="overview-masonry"><div id="relayMount"></div>${overviewBody}</div>`;
   const mount = workspace.querySelector("#relayMount");
   if (mount) mount.replaceWith(relayCard(providers, providerData.activeProvider));
-  workspace.querySelector("#overviewRange")?.addEventListener("change", event => renderOverview(workspace, Number(event.target.value)));
+  workspace.querySelector("#overviewRange")?.addEventListener("change", event => { const range = writeActivityRange(Number(event.target.value)); renderOverview(workspace, range); });
 }
 
 function claudeStateLabel(value, fallback = "Unknown") {

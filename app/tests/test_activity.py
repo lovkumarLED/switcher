@@ -143,6 +143,21 @@ class ActivityTests(unittest.TestCase):
         self.assertTrue(all(not worker.is_alive() for worker in workers))
         self.assertEqual({event["traceId"] for event in activity.list_events(30, 10)}, {"one", "two"})
 
+    def test_all_time_range_returns_all_retained_events(self):
+        """All time includes every event still present in the app-owned activity log."""
+        now = datetime.now(timezone.utc).replace(microsecond=0)
+        older = (now - timedelta(days=2)).isoformat().replace("+00:00", "Z")
+        current = now.isoformat().replace("+00:00", "Z")
+        activity.ACTIVITY_FILE.write_text("".join(json.dumps({
+            "timestamp": timestamp,
+            "traceId": trace_id,
+            "providerId": "p",
+            "status": 200,
+        }) + "\\n" for timestamp, trace_id in ((older, "older"), (current, "current"))), encoding="utf-8")
+
+        events = activity.list_events(0, 10)
+        self.assertEqual([event["traceId"] for event in events], ["current", "older"])
+        self.assertEqual(activity.summary(0)["requestCount"], 2)
     def test_server_exposes_activity_list_and_summary_endpoints(self):
         """Catches an implemented activity module that the GUI cannot reach."""
         from server import app as server_app

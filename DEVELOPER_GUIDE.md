@@ -60,7 +60,9 @@ bdf/README.md
 
 # How the Pieces Fit Together
 
-The repository is organized into two layers.
+The repository is organized into three layers: framework documentation
+(`bdf/` plus these root guides), the self-contained Switcher app (`app/`,
+including its bundled engine), and unique-agent adapters (`adapters/`).
 
 ## Layer 1 — Builder Development Framework (`bdf/`)
 
@@ -83,6 +85,13 @@ project-specific fact:
 ```
 ADAPTER.md
 ```
+
+## Layer 3 — Switcher App and Adapters (`app/`, `adapters/`)
+
+The self-contained Switcher app (`app/`, including its bundled engine under
+`app/engine/`) manages runtime configs through a GUI; unique bounded adapters
+live under `adapters/<agent>/`, each owning a five-file documentation
+contract.
 
 ---
 
@@ -148,15 +157,18 @@ Edit only source files. Never edit generated files:
 Run the test harnesses:
 
 ```
-powershell -File scripts/test-opencode-v2.ps1       # 17 tests
-powershell -File scripts/test-opencode-v2.5.ps1     # 13 tests
-powershell -File scripts/test-opencode-v2.7.ps1     # 31 tests
+powershell -File app/engine/test-opencode-v2.7.ps1                            # 40 tests (incl. 5 LSP)
+powershell -File app/engine/kilo/test-kilo-v1.ps1                             # 37 tests
+powershell -File app/engine/claude-code/test-claude-code.ps1                  # Gate 2, 73 tests
+powershell -File app/engine/claude-code/test-provider-model.ps1 -PythonExe <docs\app\env\Scripts\python.exe>   # Gate 3
 ```
 
-KiloCode project:
+Python backend and Node contract suites:
 
 ```
-powershell -File ~/.config/kilo/scripts/test-kilo-v1.ps1   # 30 tests
+cd docs\app
+env\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"    # 270 tests
+node --test tests/*.test.mjs                                           # 192 contracts
 ```
 
 All must pass with exit code 0.
@@ -199,7 +211,7 @@ See `BUILDER_EXTENSION_GUIDE.md`.
 
 ## Releasing a version
 
-1. Record the release facts in `docs/release_registry.json`.
+1. Record the release facts in `release_registry.json`.
 2. Run the release manager:
 
 ```

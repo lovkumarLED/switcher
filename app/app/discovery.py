@@ -114,8 +114,8 @@ def scan(body: ScanBody):
 
     profiles_dir = directory / "profiles"
     profiles = [p.name for p in profiles_dir.glob("*") if p.is_dir()] if profiles_dir.is_dir() else []
-    providers_dir = directory / "providers"
-    providers = sorted(p.stem for p in providers_dir.glob("*.json")) if providers_dir.is_dir() else []
+    providers = sorted(p["id"] for p in agentstore.list_providers(directory))
     has_builder = agentstore.has_any_builder(directory)
-    split = (directory / "profiles" / "coding" / "mcp.json").is_file()
-    return {"agent": body.agent, "mcps": mcps, "plugins": plugins, "profiles": profiles, "providers": providers, "activeProviders": agentstore.get_active_providers(directory), "split": split, "hasBuilder": has_builder}
+    profile = agentstore.active_profile(directory)
+    split = (directory / "profiles" / profile / "mcp.json").is_file()
+    return {"agent": body.agent, "mcps": mcps, "plugins": plugins, "profiles": profiles, "providers": providers, "activeProviders": agentstore.get_active_providers(directory, existing_only=True), "split": split, "hasBuilder": has_builder}

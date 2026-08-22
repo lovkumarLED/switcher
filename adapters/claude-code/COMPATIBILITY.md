@@ -70,8 +70,8 @@ records only what the cited gate reports prove.
 ## Last verification date and evidence source
 
 2026-08-17. Corrected Gate 5B live validation PASS
-(`planning/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md`) +
-Gate 5C documentation/release sync (`planning/CLAUDE_CODE_GATE_5C_DOCUMENTATION_RELEASE_SYNC_REPORT.md`);
+(`planning/claude-code/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md`) +
+Gate 5C documentation/release sync (`planning/claude-code/CLAUDE_CODE_GATE_5C_DOCUMENTATION_RELEASE_SYNC_REPORT.md`);
 Gates 1-4A reports remain the fixture/integration evidence ledger.
 
 ## Status

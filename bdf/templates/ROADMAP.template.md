@@ -356,14 +356,17 @@ Builder validates config sources against schema files before its own validation;
 
 ---
 
-## Phase 11 - Claude Code Builder V1 - SUPERSEDED ✅
+## Phase 11 - Claude Code Builder V1 - DROPPED FROM GENERIC PATH ✅ (unique adapter route)
 
 Status
 
 ```
-DROPPED - if Claude Code was planned here, it is out of scope now (entropic
-~/.claude.json, no multi-provider support). Replace with the actual first
-validation project (e.g. KiloCode).
+DROPPED from the generic builder path - if Claude Code was planned here, its
+entropic single-file config (~/.claude.json) makes a generic BDF profile
+builder infeasible. The proven pattern instead: ship it as a unique bounded
+adapter under adapters/<agent>/ managing one scalar route at a time (this is
+what the reference project did, live validated), and replace this entry with
+your actual first validation project (e.g. KiloCode).
 ```
 
 Objective

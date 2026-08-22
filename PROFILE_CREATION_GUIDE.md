@@ -145,7 +145,7 @@ profiles/gaming/
 ```
 
 ```powershell
-.\build-opencode-v2.7.ps1 -Profile gaming
+.\app\engine\build-opencode-v2.7.ps1 -Profile gaming
 ```
 
 ---
@@ -155,10 +155,11 @@ profiles/gaming/
 The builder selects the profile at invocation time:
 
 ```powershell
-.\build-opencode-v2.7.ps1 -Profile <name> [-NonInteractive]
+.\app\engine\build-opencode-v2.7.ps1 -Profile <name> [-NonInteractive]
 ```
 
 Active providers are read from `settings.json` → `activeProviders`.
+Profiles can also be switched inside the Switcher app (Settings → Change profile); the default model profile constant is `coding`.
 
 ---
 

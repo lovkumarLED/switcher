@@ -48,7 +48,7 @@ All must preserve the core architecture established by V3.
 | Framework generalization before V3 | V2.5 (ROADMAP Phase 10) |
 | `NEW_PROJECT_GUIDE.md` | V2.5 planned work |
 | Session journey tracking | `_agent/JOURNEY_TO_V3.md` |
-| Checkpoint + resume for large builds | `AI/CONTINUE_PROJECT_BUILD.md` |
+| Checkpoint + resume for large builds | `AI/builder/CONTINUE_PROJECT_BUILD.md` |
 | JSON Schema validation against `schemas/` | Builder V2.7 F1 (seven live schemas under `schemas/`) |
 | Project Generator as a real tool | `scripts/scaffold-agent.ps1` `-Bootstrap` (V3 universal core) |
 

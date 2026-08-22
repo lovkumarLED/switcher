@@ -45,6 +45,8 @@ any open-source coding agent).
 ## 1. Choose an ID
 
 The provider id is the file name. Example: `omniroute` → `providers/omniroute.json`.
+IDs are slugified lowercase `[a-z0-9-]`; Windows reserved names
+(`con`, `nul`, `aux`, `com1-9`, `lpt1-9`) are rejected.
 
 ## 2. Create the file
 
@@ -71,7 +73,9 @@ Minimal shape (dual key: `apiKey` for OpenCode, `options.apiKey` for Kilo):
 Real providers work identically: `baseURL` is the provider's endpoint
 (TokenRouter, Modal, OpenAI, OpenRouter, ...), `npm` is the SDK package, and
 the key is the provider's API key (for Modal, the combined proxy token
-`wk-<id>.ws-<secret>`).
+`wk-<id>.ws-<secret>`). Built-in presets include Google Gemini and
+NVIDIA NIM; the SDK package auto-fills from `@ai-sdk/*`; and the built-in
+Test connection endpoint verifies credentials against the provider.
 
 ## 3. Add models (optional)
 
@@ -213,7 +217,7 @@ profiles/<profile>/models.json
 
 # How the Builder Uses Providers
 
-The builder (e.g. `build-opencode-v2.7.ps1`):
+The builder (e.g. `app\engine\build-opencode-v2.7.ps1`):
 
 1. Discovers all `providers/*.json`.
 2. Resolves active providers from `profiles/<profile>/settings.json` →

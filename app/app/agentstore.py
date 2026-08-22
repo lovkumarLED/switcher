@@ -14,13 +14,27 @@ from fastapi import HTTPException
 from .storage import get_state, set_state
 
 NPM_OPENAI_COMPATIBLE = "@ai-sdk/openai-compatible"
+MODEL_PROFILE = "coding"
+PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def _well_formed_agent(entry):
+    return (
+        isinstance(entry, dict)
+        and isinstance(entry.get("name"), str)
+        and bool(entry["name"])
+        and isinstance(entry.get("dir"), str)
+        and bool(entry["dir"])
+    )
 
 
 def get_agents():
     state = get_state()
     if "agents" in state:
         agents = state.get("agents")
-        return agents if isinstance(agents, list) else []
+        if isinstance(agents, list):
+            return [a for a in agents if _well_formed_agent(a)]
+        return []
     agent, directory = state.get("agent"), state.get("dir")
     if agent and directory:
         return [{"name": agent, "dir": directory}]
@@ -115,17 +129,48 @@ def require_agent_dir():
     return Path(directory)
 
 
+def active_profile(agent_dir=None):
+    """Return the selected profile, falling back safely to the legacy coding profile."""
+    candidate = get_state().get("activeProfile")
+    if not isinstance(candidate, str) or not PROFILE_NAME_RE.match(candidate):
+        return MODEL_PROFILE
+    if agent_dir is not None and not (Path(agent_dir) / "profiles" / candidate).is_dir():
+        return MODEL_PROFILE
+    return candidate
+
+
+def _profile_name(agent_dir, profile=None):
+    candidate = active_profile(agent_dir) if profile is None else profile
+    if not isinstance(candidate, str) or not PROFILE_NAME_RE.match(candidate):
+        raise HTTPException(400, "Invalid profile name.")
+    return candidate
+
+
+def profile_dir(agent_dir, profile=None):
+    return Path(agent_dir) / "profiles" / _profile_name(agent_dir, profile)
+
+
 def slugify(name):
     return re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
 
 
 PROVIDER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
+# Windows reserves these device names; files named after them can hang or
+# redirect to hardware on some Windows versions, so they are never valid ids.
+_RESERVED_PROVIDER_IDS = {
+    "con", "prn", "aux", "nul",
+    *(f"com{i}" for i in range(1, 10)),
+    *(f"lpt{i}" for i in range(1, 10)),
+}
+
 
 def _require_valid_provider_id(provider_id):
     """Reject ids that could escape the providers/ directory (path traversal)."""
     if not isinstance(provider_id, str) or not PROVIDER_ID_RE.match(provider_id):
         raise HTTPException(400, "Invalid provider id - use letters, numbers and dashes only.")
+    if provider_id in _RESERVED_PROVIDER_IDS:
+        raise HTTPException(400, "That provider id is reserved by Windows. Pick a different id.")
 
 
 def _builder_version(path):
@@ -228,26 +273,39 @@ def _provider_dict(provider_file):
     }
 
 
-def list_providers(agent_dir):
-    providers_dir = agent_dir / "providers"
+def _providers_dir(agent_dir, profile=None):
+    resolved = _profile_name(agent_dir, profile)
+    profile_providers = Path(agent_dir) / "profiles" / resolved / "providers"
+    # Existing coding workspaces keep their provider files in the legacy
+    # top-level folder. Other profiles are isolated under their own folder.
+    if resolved != MODEL_PROFILE or profile_providers.is_dir():
+        return profile_providers
+    return Path(agent_dir) / "providers"
+
+
+def list_providers(agent_dir, profile=None):
+    providers_dir = _providers_dir(agent_dir, profile)
     if not providers_dir.is_dir():
         return []
     return [_provider_dict(f) for f in sorted(providers_dir.glob("*.json"))]
 
 
-def read_provider(agent_dir, provider_id):
+def _provider_file(agent_dir, provider_id, profile=None):
     _require_valid_provider_id(provider_id)
-    provider_file = agent_dir / "providers" / f"{provider_id}.json"
+    return _providers_dir(agent_dir, profile) / f"{provider_id}.json"
+
+
+def read_provider(agent_dir, provider_id, profile=None):
+    provider_file = _provider_file(agent_dir, provider_id, profile)
     if not provider_file.is_file():
         return None
     return _provider_dict(provider_file)
 
 
-def write_provider(agent_dir, provider_id, name, base_url, api_key, npm=None, reasoning_format=None):
-    _require_valid_provider_id(provider_id)
-    providers_dir = agent_dir / "providers"
+def write_provider(agent_dir, provider_id, name, base_url, api_key, npm=None, reasoning_format=None, profile=None):
+    provider_file = _provider_file(agent_dir, provider_id, profile)
+    providers_dir = provider_file.parent
     providers_dir.mkdir(parents=True, exist_ok=True)
-    provider_file = providers_dir / f"{provider_id}.json"
     data = _read_json(provider_file, {})
     _backup(provider_file)
     inner = (data.get("provider") or {}).get(provider_id, {})
@@ -266,8 +324,6 @@ def write_provider(agent_dir, provider_id, name, base_url, api_key, npm=None, re
     _write_json(provider_file, data)
     return _provider_dict(provider_file)
 
-
-MODEL_PROFILE = "coding"
 
 REASONING_FORMATS = {
     "opencode": {
@@ -309,12 +365,12 @@ def resolve_format(format_id=None):
     return "opencode"
 
 
-def models_file(agent_dir, provider_id, profile=MODEL_PROFILE):
+def models_file(agent_dir, provider_id, profile=None):
     _require_valid_provider_id(provider_id)
-    return agent_dir / "profiles" / profile / f"{provider_id}-models.json"
+    return profile_dir(agent_dir, profile) / f"{provider_id}-models.json"
 
 
-def read_models(agent_dir, provider_id, profile=MODEL_PROFILE, format_id=None):
+def read_models(agent_dir, provider_id, profile=None, format_id=None):
     data = _read_json(models_file(agent_dir, provider_id, profile), {})
     models = data.get("models") or {}
     result = []
@@ -334,7 +390,7 @@ def read_models(agent_dir, provider_id, profile=MODEL_PROFILE, format_id=None):
     return result
 
 
-def write_models(agent_dir, provider_id, items, profile=MODEL_PROFILE, format_id=None):
+def write_models(agent_dir, provider_id, items, profile=None, format_id=None):
     fmt = resolve_format(format_id)
     path = models_file(agent_dir, provider_id, profile)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -373,14 +429,14 @@ def write_models(agent_dir, provider_id, items, profile=MODEL_PROFILE, format_id
     return read_models(agent_dir, provider_id, profile, format_id=fmt)
 
 
-def delete_models(agent_dir, provider_id, profile=MODEL_PROFILE):
+def delete_models(agent_dir, provider_id, profile=None):
     path = models_file(agent_dir, provider_id, profile)
     if path.is_file():
         _backup(path)
         path.unlink()
 
 
-def delete_model(agent_dir, provider_id, model_id, profile=MODEL_PROFILE):
+def delete_model(agent_dir, provider_id, model_id, profile=None):
     """Remove a single model entry from the provider's models file."""
     path = models_file(agent_dir, provider_id, profile)
     data = _read_json(path, {})
@@ -394,11 +450,11 @@ def delete_model(agent_dir, provider_id, model_id, profile=MODEL_PROFILE):
     return True
 
 
-def plugins_file(agent_dir, profile=MODEL_PROFILE):
-    return agent_dir / "profiles" / profile / "plugins.json"
+def plugins_file(agent_dir, profile=None):
+    return profile_dir(agent_dir, profile) / "plugins.json"
 
 
-def read_plugins(agent_dir, profile=MODEL_PROFILE):
+def read_plugins(agent_dir, profile=None):
     data = _read_json(plugins_file(agent_dir, profile), {})
     plugins = data.get("plugin")
     if isinstance(plugins, list):
@@ -406,7 +462,7 @@ def read_plugins(agent_dir, profile=MODEL_PROFILE):
     return []
 
 
-def write_plugins(agent_dir, plugins, profile=MODEL_PROFILE):
+def write_plugins(agent_dir, plugins, profile=None):
     path = plugins_file(agent_dir, profile)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = _read_json(path, {})
@@ -416,17 +472,17 @@ def write_plugins(agent_dir, plugins, profile=MODEL_PROFILE):
     return read_plugins(agent_dir, profile)
 
 
-def mcp_file(agent_dir, profile=MODEL_PROFILE):
-    return agent_dir / "profiles" / profile / "mcp.json"
+def mcp_file(agent_dir, profile=None):
+    return profile_dir(agent_dir, profile) / "mcp.json"
 
 
-def read_mcp(agent_dir, profile=MODEL_PROFILE):
+def read_mcp(agent_dir, profile=None):
     data = _read_json(mcp_file(agent_dir, profile), {})
     mcps = data.get("mcp")
     return mcps if isinstance(mcps, dict) else {}
 
 
-def write_mcp(agent_dir, name, config, profile=MODEL_PROFILE):
+def write_mcp(agent_dir, name, config, profile=None):
     path = mcp_file(agent_dir, profile)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = _read_json(path, {})
@@ -440,11 +496,11 @@ def write_mcp(agent_dir, name, config, profile=MODEL_PROFILE):
     return mcps
 
 
-def lsp_file(agent_dir, profile=MODEL_PROFILE):
-    return agent_dir / "profiles" / profile / "lsp.json"
+def lsp_file(agent_dir, profile=None):
+    return profile_dir(agent_dir, profile) / "lsp.json"
 
 
-def read_lsp(agent_dir, profile=MODEL_PROFILE):
+def read_lsp(agent_dir, profile=None):
     data = _read_json(lsp_file(agent_dir, profile), {})
     value = data.get("lsp", True)
     enabled = data.get("enabled", False)
@@ -453,7 +509,7 @@ def read_lsp(agent_dir, profile=MODEL_PROFILE):
     return {"lsp": value, "enabled": bool(enabled)}
 
 
-def write_lsp(agent_dir, value, enabled, profile=MODEL_PROFILE):
+def write_lsp(agent_dir, value, enabled, profile=None):
     path = lsp_file(agent_dir, profile)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = _read_json(path, {})
@@ -466,7 +522,7 @@ def write_lsp(agent_dir, value, enabled, profile=MODEL_PROFILE):
     return read_lsp(agent_dir, profile)
 
 
-def remove_mcp(agent_dir, name, profile=MODEL_PROFILE):
+def remove_mcp(agent_dir, name, profile=None):
     path = mcp_file(agent_dir, profile)
     data = _read_json(path, {})
     mcps = data.get("mcp")
@@ -479,24 +535,28 @@ def remove_mcp(agent_dir, name, profile=MODEL_PROFILE):
     return True
 
 
-def delete_provider(agent_dir, provider_id):
-    _require_valid_provider_id(provider_id)
-    provider_file = agent_dir / "providers" / f"{provider_id}.json"
+def delete_provider(agent_dir, provider_id, profile=None):
+    provider_file = _provider_file(agent_dir, provider_id, profile)
     if provider_file.is_file():
         _backup(provider_file)
         provider_file.unlink()
 
 
-def get_active_providers(agent_dir):
-    settings = _read_json(agent_dir / "profiles" / "coding" / "settings.json", {})
+def get_active_providers(agent_dir, profile=None, existing_only=False):
+    settings = _read_json(profile_dir(agent_dir, profile) / "settings.json", {})
     active = settings.get("activeProviders", [])
     if isinstance(active, str):
         active = [active]
-    return [item for item in active if isinstance(item, str) and item]
+    result = [item for item in active if isinstance(item, str) and item]
+    if existing_only:
+        providers_dir = _providers_dir(agent_dir, profile)
+        known = {path.stem for path in providers_dir.glob("*.json")} if providers_dir.is_dir() else set()
+        result = [item for item in result if item in known]
+    return result
 
 
-def set_active_providers(agent_dir, provider_ids):
-    settings_path = agent_dir / "profiles" / "coding" / "settings.json"
+def set_active_providers(agent_dir, provider_ids, profile=None):
+    settings_path = profile_dir(agent_dir, profile) / "settings.json"
     settings_path.parent.mkdir(parents=True, exist_ok=True)
     settings = _read_json(settings_path, {})
     _backup(settings_path)
@@ -504,10 +564,10 @@ def set_active_providers(agent_dir, provider_ids):
     _write_json(settings_path, settings)
 
 
-def activate_provider(agent_dir, provider_id):
+def activate_provider(agent_dir, provider_id, profile=None):
     """Move a provider to the front of the active list (all stay merged in builds)."""
-    active = get_active_providers(agent_dir)
-    set_active_providers(agent_dir, [provider_id] + [p for p in active if p != provider_id])
+    active = get_active_providers(agent_dir, profile)
+    set_active_providers(agent_dir, [provider_id] + [p for p in active if p != provider_id], profile)
 
 
 def active_provider(agent_dir):

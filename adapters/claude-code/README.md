@@ -1,5 +1,9 @@
 # Claude Code Adapter
 
+> The unique bounded routing adapter inside [Switcher](../../README.md) —
+> start with the main README for install and demos, or see the
+> [app guide](../../app/README.md) for day-to-day use.
+
 Lifecycle status: **Live validated**
 
 Evidence date: 2026-08-17
@@ -24,9 +28,14 @@ proven on temporary fixture copies (Gates 2-4A), and an approved live validation
 run against the real user-scope `.claude/settings.json` passed: one saved
 loopback route applied and surgically restored, `/status` evidence collected,
 and one no-session-persistence routing request returned the fixed marker with
-the applied route's model verified from structured response metadata. The
-real-target lock stays closed until the owner opens it; apply/restore remain
-503-gated by default.
+the applied route's model verified from structured response metadata.
+
+The real-target lock was subsequently **opened by owner decision** (session 48),
+so Apply/Restore work from the UI. A second owner-authorized live gate
+(2026-08-22) re-executed apply + restore end-to-end with a SHA-256 byte-verified
+restoration of `settings.json` and all app state files. The lock remains a
+deliberate control, not a technical limitation — it can be closed again by owner
+decision.
 
 ## Reading order
 
@@ -103,26 +112,26 @@ usage only) with delete blocked while any route references them.
 
 ## Evidence gates reached and not reached
 
-- Gate 1 (read-only research): reached - `planning/CLAUDE_CODE_GATE_1_RESEARCH_REPORT.md`.
+- Gate 1 (read-only research): reached - `planning/claude-code/CLAUDE_CODE_GATE_1_RESEARCH_REPORT.md`.
 - Gate 2 (fixture-only builder): reached - 65/65 harness (51 prior + 14
-  env-only surgical tests), `planning/CLAUDE_CODE_GATE_2_FIXTURE_BUILDER_REPORT.md`.
+  env-only surgical tests), `planning/claude-code/CLAUDE_CODE_GATE_2_FIXTURE_BUILDER_REPORT.md`.
 - Gate 3 (provider/model behavior): reached - overall pass,
-  `planning/CLAUDE_CODE_GATE_3_PROVIDER_MODEL_REPORT.md`.
+  `planning/claude-code/CLAUDE_CODE_GATE_3_PROVIDER_MODEL_REPORT.md`.
 - Gate 4A (app integration and production-path logic): reached -
-  `planning/CLAUDE_CODE_GATE_4A_IMPLEMENTATION_REPORT.md` and its three repair
+  `planning/claude-code/CLAUDE_CODE_GATE_4A_IMPLEMENTATION_REPORT.md` and its three repair
   rounds.
 - Gate 4 (integration documentation): this document set and
-  `planning/CLAUDE_CODE_GATE_4_APP_INTEGRATION_REPORT.md`.
+  `planning/claude-code/CLAUDE_CODE_GATE_4_APP_INTEGRATION_REPORT.md`.
 - Gate 5 (approved live validation): REACHED (2026-08-17, corrected env-only
   contract). Session 46 proved every transaction mechanic; session 48 secured
   the routing evidence (fixed marker `GATE5B_ROUTE_OK` returned, applied model
   verified from structured metadata) - see
-  `planning/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md` and
-  `planning/CLAUDE_CODE_GATE_5C_DOCUMENTATION_RELEASE_SYNC_REPORT.md`. The
+  `planning/claude-code/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md` and
+  `planning/claude-code/CLAUDE_CODE_GATE_5C_DOCUMENTATION_RELEASE_SYNC_REPORT.md`. The
   historical Gate 5B.4 `HARD_FAILURE` report remains valid context under the
   superseded broad ownership contract and does not justify restoring or
   deleting Claude-owned state; the corrected env-only scope is documented in
-  `planning/CLAUDE_CODE_SETTINGS_ONLY_SCOPE_CORRECTION_DESIGN.md`.
+  `planning/claude-code/CLAUDE_CODE_SETTINGS_ONLY_SCOPE_CORRECTION_DESIGN.md`.
 
 ## Governing decisions
 
@@ -134,7 +143,7 @@ usage only) with delete blocked while any route references them.
 - Approved documentation architecture:
   `planning/UNIQUE_AGENT_ADAPTER_DOCUMENTATION_DESIGN.md`.
 - Authoritative Claude research plan:
-  `planning/CLAUDE_CODE_BDF_ADAPTATION_RESEARCH_PLAN.md`.
+  `planning/claude-code/CLAUDE_CODE_BDF_ADAPTATION_RESEARCH_PLAN.md`.
 
 ## Warning
 
@@ -142,8 +151,17 @@ The adapter is **Live validated** only for the corrected env-only routing
 scope and the loopback gateway exercised by the gate. Fixture, integration,
 and production-path evidence must never be interpreted as a broader support
 claim: Claude-owned state outside `settings.json`'s managed `env` fields
-remains entirely outside BDF access, and the real-target lock stays closed
-until the owner opens it.
+remains entirely outside BDF access, and the real-target lock remains a
+deliberate owner control over when live applies may run.
+
+---
+
+## Documentation network
+
+- [Main README](../../README.md) — product overview, install, demos
+- [App guide](../../app/README.md) — using the Routes page and credentials UI
+- [Framework](../../bdf/README.md) — BDF process, adapter categories, templates
+- [Contributing](../../CONTRIBUTING.md) · [Security](../../SECURITY.md) · [Code of conduct](../../CODE_OF_CONDUCT.md)
 
 ## Document versions
 

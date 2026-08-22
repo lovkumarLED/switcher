@@ -1,6 +1,10 @@
 # Builder Development Framework
 
 > The reusable engineering platform for building configuration builders.
+>
+> Part of [Switcher](../README.md) — a local switchboard for OpenCode,
+> KiloCode, and Claude Code. The Switcher app is one consumer of this
+> framework; see also the [Claude Code adapter](../adapters/claude-code/README.md).
 
 ---
 
@@ -197,6 +201,17 @@ The generic contracts summarized here are defined in:
   evolution rules.
 - `bdf/VERSION.md` - framework version 2.3.0 change history for the
   unique-adapter layer.
+
+---
+
+## Where this fits in the repository
+
+| Layer | Location | Purpose |
+|---|---|---|
+| Product landing page | [`README.md`](../README.md) | What Switcher is, install, demos |
+| App guide (Layer 2 consumer) | [`app/README.md`](../app/README.md) | Using the GUI that calls generated builders |
+| Framework (this folder, Layer 1) | `bdf/` | Reusable engineering knowledge + templates |
+| Unique agent adapters | [`adapters/`](../adapters/claude-code/README.md) | Bounded adapters for agents whose contracts differ |
 
 ---
 

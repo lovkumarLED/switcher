@@ -46,7 +46,7 @@ deleteClaudeCredential: name => request(`/api/claude/credentials/${encodeURIComp
   deleteModel: (providerId, modelId) => request(`/api/providers/${encodeURIComponent(providerId)}/models/delete`, send("POST", { model: modelId })),
   testProvider: body => request("/api/test", send("POST", body)),
   testModel: (id, body) => request(`/api/providers/${encodeURIComponent(id)}/models/test`, send("POST", body)),
-  build: (profile = "coding") => request("/api/build", send("POST", { profile })),
+  build: (profile = null) => request("/api/build", send("POST", { profile })),
   plugins: () => request("/api/plugins"),
   addPlugin: plugin => request("/api/plugins", send("POST", { plugin })),
   removePlugin: plugin => request("/api/plugins", send("DELETE", { plugin })),

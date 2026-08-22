@@ -1,6 +1,6 @@
 import { api, optional } from "../core/api.js";
 import { confirmAction, escapeHtml, notify, openDialog } from "../core/dialog.js";
-import { integrationWorkspaceMarkup } from "./integration-workspace.js";
+import { integrationWorkspaceMarkup, lspCard } from "./integration-workspace.js";
 
 function openPluginDialog(trigger, onSaved) {
   const { dialog, close } = openDialog({
@@ -62,7 +62,7 @@ function openLspJsonDialog(lsp, onSaved) {
     try { parsed = JSON.parse(dialog.querySelector("#lspJson").value); }
     catch (error) { message.textContent = "LSP configuration must be valid JSON."; return; }
     if (typeof parsed !== "boolean" && (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))) { message.textContent = "LSP value must be true, false, or a JSON object."; return; }
-    try { await api.setLsp(parsed, lsp.enabled); close(); notify("LSP configuration saved.", "success"); onSaved(); }
+    try { await api.setLsp(parsed, lsp.enabled); lsp.lsp = parsed; close(); notify("LSP configuration saved.", "success"); onSaved(); }
     catch (error) { message.textContent = error.message; }
   });
 }
@@ -85,13 +85,29 @@ export async function renderIntegrations(workspace) {
   workspace.innerHTML = integrationWorkspaceMarkup({ plugins, mcps, providers, agentName, lsp: currentLsp, configName });
 
   const refresh = () => renderIntegrations(workspace);
+  const updateLspCard = () => {
+    workspace.querySelector(".integration-lsp")?.replaceWith(
+      document.createRange().createContextualFragment(lspCard(currentLsp, configName)).firstElementChild,
+    );
+    bindLspControls();
+  };
+  function bindLspControls() {
+    workspace.querySelector("#lspToggle")?.addEventListener("change", async event => {
+      try {
+        await api.setLsp(currentLsp.lsp, event.target.checked);
+        currentLsp.enabled = event.target.checked;
+        notify(`LSP ${event.target.checked ? "enabled" : "disabled"} for the next build.`, "success");
+        updateLspCard();
+      } catch (error) {
+        notify(error.message, "error");
+        event.target.checked = !event.target.checked;
+      }
+    });
+    workspace.querySelector("#editLspJson")?.addEventListener("click", event => openLspJsonDialog(currentLsp, updateLspCard));
+  }
   workspace.querySelector("#addPlugin").addEventListener("click", event => openPluginDialog(event.currentTarget, refresh));
   workspace.querySelector("#addMcp").addEventListener("click", event => openMcpDialog(event.currentTarget, refresh));
-  workspace.querySelector("#lspToggle").addEventListener("change", async event => {
-    try { await api.setLsp(currentLsp.lsp, event.target.checked); notify(`LSP ${event.target.checked ? "enabled" : "disabled"} for the next build.`, "success"); refresh(); }
-    catch (error) { notify(error.message, "error"); event.target.checked = !event.target.checked; }
-  });
-  workspace.querySelector("#editLspJson").addEventListener("click", event => openLspJsonDialog(currentLsp, refresh));
+  bindLspControls();
   workspace.querySelectorAll("[data-remove-plugin]").forEach(button => button.addEventListener("click", async () => {
     if (!await confirmAction({ title: "Remove plugin identifier?", message: "This removes the identifier from the active profile after keeping a backup.", confirmLabel: "Remove", danger: true, trigger: button })) return;
     try { await api.removePlugin(button.dataset.removePlugin); notify("Plugin identifier removed.", "success"); refresh(); } catch (error) { notify(error.message, "error"); }
@@ -114,7 +130,7 @@ export async function renderIntegrations(workspace) {
   workspace.querySelector("#buildConfig").addEventListener("click", async event => {
     const button = event.currentTarget, line = workspace.querySelector("#buildMessage");
     button.disabled = true; line.textContent = "Building…";
-    try { const result = await api.build("coding"); line.textContent = result.message || "Configuration built."; notify("Configuration built.", "success"); }
+    try { const result = await api.build(); line.textContent = result.message || "Configuration built."; notify("Configuration built.", "success"); }
     catch (error) { line.textContent = error.message; notify(error.message, "error"); }
     finally { button.disabled = false; }
   });

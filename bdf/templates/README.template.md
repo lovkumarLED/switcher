@@ -221,7 +221,7 @@ Automated test harnesses keep the system green:
 |---------|--------|--------|
 | `{{TEST_HARNESS}}` | Builder + release pipeline | 17/17 ✅ |
 | `{{V25_TEST_HARNESS}}` | Active-Provider Selector | 13/13 ✅ |
-| `{{V27_TEST_HARNESS}}` | JSON Schema validation + hardening | 31/31 ✅ |
+| `{{V27_TEST_HARNESS}}` | JSON Schema validation + hardening | 40/40 ✅ |
 
 Every builder build must pass the **Alpha → Beta → General Release** gates in
 `{{DOCS_DIR}}/bdf/BUILDER_PHASES.md` before it becomes the main builder.

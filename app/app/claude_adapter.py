@@ -1135,6 +1135,13 @@ def claude_route_apply(route_id: str, body: RouteApplyBody):
             if applied:
                 _rollback_apply(root, target, output, recovery_path, recovery_sha, previous_store, previous_manifest, previous_activity, prune_staged, transaction_store_backup, previous_store_backup_name, body.expectedRevision, schema_identity)
             raise HTTPException(500, exc.message)
+        except HTTPException:
+            # Deliberate guard failures (e.g. unsafe backup pruning) already
+            # carry an accurate status + message - never mask them as a
+            # generic "could not be applied" 500. Rollback still runs below.
+            if applied and not commit_complete:
+                _rollback_apply(root, target, output, recovery_path, recovery_sha, previous_store, previous_manifest, previous_activity, prune_staged, transaction_store_backup, previous_store_backup_name, body.expectedRevision, schema_identity)
+            raise
         except Exception:
             if commit_complete:
                 raise HTTPException(500, "The route was applied but backup cleanup could not be completed.")

@@ -62,6 +62,8 @@ Do not apply random fixes without first identifying the root cause.
 | Provider | Provider configuration errors |
 | Environment | Operating system or environment issues |
 | OpenCode | Runtime configuration errors |
+| App | Setup verification failed when active providers are unreachable (auto-revert restores from the backup matched by config stem) |
+| Server | 403 on requests not from loopback origin; prune failures return 409 with reason; malformed app state entries are filtered safely; friendly JSON errors never leak stack traces |
 
 ---
 
@@ -394,6 +396,9 @@ If the cause of an issue is unknown:
 7. Execute the builder again.
 8. Verify the generated configuration.
 9. Launch OpenCode.
+
+App users recover via the Settings and backup panels instead of these manual
+builder steps.
 
 Do not attempt multiple unrelated fixes simultaneously.
 

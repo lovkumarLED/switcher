@@ -157,6 +157,15 @@ Every build follows this order.
 
 No stage may be skipped.
 
+## Harness contract
+
+Every engine change is gated by its bundled test harnesses:
+
+- `app/engine/test-opencode-v2.7.ps1` — v2.7: 40 tests.
+- `app/engine/kilo/test-kilo-v1.ps1` — kilo: 37 tests.
+
+Harnesses exit non-zero on any failure. Determinism is asserted: same inputs produce byte-identical output.
+
 ---
 
 # Release Pipeline
@@ -435,35 +444,39 @@ Each provider can own its own models.
 
 When resolving models for a provider, the builder uses the first source that exists:
 
-1. Provider-specific models file
+1. Profile-level models file
+
+```
+profiles/<profile>/<provider>-models.json
+```
+
+2. Folder models file
 
 ```
 providers/<provider>/models.json
 ```
 
-2. Inline models inside the provider definition file
+3. Inline models inside the provider definition file
 
 ```
 providers/<provider>.json  ->  provider.<provider>.models
 ```
 
-3. Global models file
+4. None — no models configured for the provider (there is NO global `models.json` fallback).
 
-```
-profiles/<profile>/models.json
-```
-
-Provider-specific models win over inline models, which win over global models.
-
-Global models are only injected into a provider when the provider has no models of its own.
-
-This keeps Builder V2 behavior: a provider with an empty `models` object receives the global models.
+Profile-level models win over folder models, which win over inline models.
 
 ### Why
 
 Configuration is intentionally stored in separate files.
 
 The merge stage combines these independent components into a single configuration that OpenCode can consume.
+
+### Merge guarantees
+
+- Dual-key mirror `apiKey` <-> `options.apiKey` is enforced at merge.
+- Unknown user JSON fields are preserved through merges.
+- The artifact is written atomically as UTF-8 without BOM.
 
 ---
 
@@ -753,7 +766,7 @@ It discovers ALL providers (not only the active ones), then resolves the active 
 
 Stage 3 runs the active-provider model guard after merging models.
 
-Every active provider must produce a models source (profile `<provider>-models.json`, `providers/<p>/models.json`, inline, or global). A provider without any models source is NOT considered active: it is dropped with a warning, removed from the generated configuration, and removed from `settings.json` (the reduced list is persisted, backed up first). If no active provider remains, the build aborts.
+Every active provider must produce a models source (profile `<provider>-models.json`, `providers/<p>/models.json`, or inline — no global fallback). A provider without any models source is NOT considered active: it is dropped with a warning, removed from the generated configuration, and removed from `settings.json` (the reduced list is persisted, backed up first). If no active provider remains, the build aborts.
 
 Stage 8 is new to V2.5.
 
@@ -948,17 +961,9 @@ providers/<provider>/models.json
 providers/<provider>.json  ->  provider.<provider>.models
 ```
 
-4. Global models file
+4. None — no models configured for the provider (there is NO global `models.json` fallback).
 
-```
-profiles/<profile>/models.json
-```
-
-5. None — no models configured for the provider.
-
-Profile-level models win over provider-specific models, which win over inline models, which win over global models.
-
-Global models are only injected into a provider when the provider has no models of its own.
+Profile-level models win over folder models, which win over inline models.
 
 Non-active providers are never considered for any source.
 
@@ -1029,7 +1034,7 @@ Active providers without a models source are dropped after merge, before generat
 The drop is announced with a warning and the reduced list is persisted to `settings.json`:
 
 ```
-Provider '<name>': models not found (no <provider>-models.json, providers/<name>/models.json, inline, or global models.json). Provider will not be considered active and was removed from settings.json.
+Provider '<name>': models not found (no <provider>-models.json, providers/<name>/models.json, or inline). Provider will not be considered active and was removed from settings.json.
 ```
 
 The provider is absent from `opencode.json` and from `settings.json`.
@@ -1050,7 +1055,7 @@ The build fails before finishing if the round-trip check fails.
 
 This specification fully describes the current builder and its predecessors.
 
-An agent can regenerate the current builder `scripts\build-opencode-v2.7.ps1` from this document alone.
+An agent can regenerate the current builder `app\engine\build-opencode-v2.7.ps1` (Kilo twin: `app\engine\kilo\build-kilo-v1.ps1`) from this document alone; root `scripts\` copies are deployed mirrors.
 
 The retained V2.5 sections above also allow regenerating the previous builder `scripts\build-opencode-v2.5.ps1`, and the historical pipeline section documents V2.1 (`scripts\build-opencode-v2.ps1`) for reference.
 
@@ -1171,7 +1176,7 @@ Resolution rules (Stage 1 / Load Profile):
 - Provenance sidecar: `<ConfigRoot>\<artifactBase>.provenance.json`
 - WhatIf messages, F7 diff scan, and F4 retention prune on the artifact prefix
 
-A future same-architecture target profile (for example KiloCode) would set its own artifact
+The KiloCode adapter already ships: it sets its own artifact name (`"artifact": "kilo.json"`; default artifact `kilo.json`)
 name (e.g. `"artifact": "kilo.json"`) in its `target.json` — code stays untouched. The target
 file is validated against `schemas/targets.schema.json` during Stage 3 (optional source;
 skipped if absent). Claude Code is not a supported target (DECISIONS.md 2026-08-08).
@@ -1291,6 +1296,8 @@ Covers run
 <provider>-models.json  ->  models.schema.json
 models.json             ->  models.schema.json
 ```
+
+Schemas cover provider/models/plugins/mcp/lsp/settings/targets/claude-code-routing.
 
 Returns `$null` when no schema applies to the file.
 
@@ -1431,7 +1438,7 @@ V2.7
 Script
 
 ```
-build-opencode-v2.7.ps1
+app/engine/build-opencode-v2.7.ps1   (root scripts/ copy is a deployed mirror)
 ```
 
 Status
@@ -1473,10 +1480,10 @@ registry for discovery only; it is NOT a scaffold target — dropped 2026-08-08.
 Script
 
 ```
-opencode\scripts\scaffold-agent.ps1   (universal core)
-kilo\scripts\scaffold-kilo-v1.ps1     (wrapper -> universal, agent kilo)
-opencode\scripts\scaffold-opencode.ps1 (wrapper -> universal, agent opencode)
+app/engine/scaffold-agent.ps1   (universal core)
 ```
+
+Canonical location: `docs/app/engine/scaffold-agent.ps1`. It generates `<agent>/scripts/build-<agent>.ps1`, typed by main-config presence (`kilo.json` -> K1 template, otherwise the V2.7 template). No separate kilo scaffold wrapper exists.
 
 Arguments: `-Agent <name>`, `-ConfigRoot` (defaults to the agent's
 `~/.config/<agent>`), `-NonInteractive`, `-List`, `-Bootstrap`.
@@ -1539,7 +1546,9 @@ invents content and never writes into user-owned files.
    only ever ensures the three profile folders + the four files per profile.
 8. `-Bootstrap` generates `build-<agent>.ps1`, `test-<agent>.ps1`,
    `scaffold-<agent>.ps1` for that agent from a source builder (verified on a
-   sandbox custom agent).
+   sandbox custom agent). Template type is inferred from main-config presence:
+   a `kilo.json` main config yields the K1 builder template, otherwise the
+   V2.7 template.
 
 ## No-Secrets Rule (ULTIMATE)
 

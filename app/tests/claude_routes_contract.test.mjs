@@ -6,6 +6,8 @@ import { renderProviderWorkspace } from "../assets/js/pages/provider-workspace.j
 import { store } from "../assets/js/core/store.js";
 
 const routesSource = await readFile(new URL("../assets/js/pages/claude-routes.js", import.meta.url), "utf8");
+const providersSource = await readFile(new URL("../assets/js/pages/providers.js", import.meta.url), "utf8");
+const providerCssSource = await readFile(new URL("../assets/css/provider-workspace.css", import.meta.url), "utf8");
 const workspaceSource = await readFile(new URL("../assets/js/pages/provider-workspace.js", import.meta.url), "utf8");
 
 const route = {
@@ -26,10 +28,10 @@ test("applied state compares the backend configSha256 field, never a client arra
   assert.doesNotMatch(routesSource, /JSON\.stringify\(\[/);
 });
 
-test("claude routes workspace renders title, explanation, add action, and cards", () => {
+test("claude routes workspace renders title, add action, and cards", () => {
   const markup = claudeRoutesMarkup([route], storeData);
   assert.match(markup, /Claude routes/);
-  assert.match(markup, /one route can be applied at a time/);
+  assert.doesNotMatch(markup, /one route can be applied at a time/);
   assert.match(markup, /Add route/);
   assert.match(markup, /claude-route-card/);
 });
@@ -44,6 +46,73 @@ test("routes page uses the two-column workspace and a summary chip bar", () => {
   assert.match(markup, /Applied: Main/);
   assert.match(markup, /1 MCP servers/);
   assert.match(markup, /1 plugins/);
+});
+
+test("routes page places the Claude status rail in the header beneath its actions", () => {
+  const markup = claudeRoutesMarkup([route], storeData);
+  assert.match(markup, /claude-routes-page-head/);
+  assert.match(markup, /claude-route-header-rail/);
+  assert.match(markup, /claude-routes-sidebar claude-routes-sidebar--header/);
+  assert.match(markup, /claude-route-header-actions/);
+  const actionsIndex = markup.indexOf("claude-route-header-actions");
+  const settingsIndex = markup.indexOf("control-room-card--settings", actionsIndex);
+  const credentialsIndex = markup.indexOf("control-room-card--credentials", settingsIndex);
+  assert.ok(actionsIndex < settingsIndex && settingsIndex < credentialsIndex);
+  assert.match(providerCssSource, /\.claude-route-header-rail\s*\{/);
+  assert.match(providerCssSource, /\.claude-routes-workspace--header-rail\s*\{[^}]*align-items:\s*start/s);
+  assert.match(providerCssSource, /\.claude-routes-workspace--header-rail\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/s);
+});
+
+test("Claude route side panels use compact control-room surfaces", () => {
+  assert.match(routesSource, /control-room-card--settings/);
+  assert.match(routesSource, /control-room-card--credentials/);
+  assert.match(providerCssSource, /\.control-room-card--credentials/);
+});
+
+test("routes page keeps the shared coding-agent switcher available", () => {
+  const markup = claudeRoutesMarkup([route], storeData);
+  assert.match(markup, /class="provider-agent-tabs(?: [^"]+)?" role="tablist" aria-label="Coding agents"/);
+  assert.match(markup, /data-provider-agent="opencode"/);
+  assert.match(markup, /data-provider-agent="kilo"/);
+  assert.match(markup, /data-provider-agent="claude-code"/);
+  assert.match(markup, /aria-selected="true"/);
+});
+
+test("routes page routes agent-tab clicks through the shared change callback", () => {
+  assert.match(routesSource, /renderClaudeRoutes\(workspace, \{ activeAgentId = "claude-code", onAgentChange = null \} = \{\}\)/);
+  assert.match(routesSource, /agentTablist.setAttribute\("aria-busy", "true"\)/);
+  assert.match(routesSource, /onAgentChange\(nextAgent\)/);
+  assert.match(providersSource, /renderClaudeRoutes\(workspace, \{[\s\S]*onAgentChange:/);
+  assert.match(providersSource, /ai-switcher:agent-changed/);
+});
+
+test("routes page removes redundant helper copy from the main surface", () => {
+  const markup = claudeRoutesMarkup([route], storeData);
+  assert.doesNotMatch(markup, /Multiple saved routes; one route can be applied at a time\./);
+  assert.doesNotMatch(markup, /Startup values/);
+});
+
+test("route details stay read-only because card actions already own mutations", () => {
+  assert.doesNotMatch(routesSource, /data-edit-route/);
+  assert.doesNotMatch(routesSource, /data-delete-route/);
+});
+
+test("route metadata and credential states use distinct visual badges", () => {
+  const roleRoute = { ...route, model: "", modelRoles: { sonnet: "gateway/sonnet" } };
+  const markup = claudeRoutesMarkup([roleRoute], { ...storeData, appliedRouteId: null, appliedRouteConfigSha256: null }, null, [{ name: "ORCA_API_KEY", backend: "store", usedBy: ["orcarouter"] }]);
+  assert.match(markup, /claude-type-chip--roles/);
+  assert.match(markup, /claude-type-chip--store/);
+  assert.match(markup, /claude-credential-badge/);
+});
+
+test("route action grid gives Edit route its own full row", () => {
+  assert.match(providerCssSource, /\.claude-route-card\.provider-deck-card \[data-route-action="edit"\]\s*\{[^}]*grid-column:\s*1 \/ -1/);
+});
+
+test("route mutations preserve the agent switcher callback on rerender", () => {
+  assert.match(routesSource, /WeakMap\(\)/);
+  assert.match(routesSource, /function rerenderClaudeRoutes\(workspace\)/);
+  assert.doesNotMatch(routesSource, /await renderClaudeRoutes\(workspace\);/);
 });
 
 test("route card shows endpoint, model, and auth reference clearly", () => {
@@ -96,9 +165,9 @@ test("preservation, restart, and env-reference notices are exact", () => {
   assert.equal(ENV_REF_HELP, "Environment variable name, not the secret value.");
 });
 
-test("unsupported surface is read-only copy, never controls", () => {
+test("unsupported surface is read-only, never controls, and the adapter-scope essay stays off the page", () => {
   const markup = claudeRoutesMarkup([route], storeData);
-  assert.match(markup, /Not managed by this adapter/);
+  assert.doesNotMatch(markup, /Not managed by this adapter/);
   assert.doesNotMatch(markup, /data-mcp/);
   assert.doesNotMatch(markup, /data-plugin/);
 });
@@ -137,7 +206,7 @@ test("agent switcher offers Claude Code as a separate page, never a provider til
 test("routes page fetches the read-only inventory and credentials for the chip bar", () => {
   assert.match(routesSource, /api\.claudeScan\(\)/);
   assert.match(routesSource, /api\.claudeCredentials\(\)\.catch\(\(\) => null\)/);
-  assert.match(routesSource, /claudeRoutesMarkup\(data\.routes \|\| \[\], data, inventory, credentials && credentials\.credentials\)/);
+  assert.match(routesSource, /claudeRoutesMarkup\(data\.routes \|\| \[\], data, inventory, credentials && credentials\.credentials, activeAgentId\)/);
 });
 
 test("inventory chips degrade gracefully when the scan is absent", () => {
@@ -247,7 +316,7 @@ test("assistant: mobile-scoped classes exist in CSS", async () => {
 test("route editor exposes Claude model roles for the four aliases", () => {
   assert.match(routesSource, /Claude model roles/);
   assert.match(routesSource, /data-role-model="\$\{role\}"/);
-  assert.match(routesSource, /\["opus","sonnet","haiku","fable"\]/);
+  assert.match(routesSource, /\["opus",\s*"sonnet",\s*"haiku",\s*"fable"\]/);
   assert.match(routesSource, /Each role holds one model ID/);
 });
 
@@ -256,6 +325,32 @@ test("route editor exposes the picker restrict toggle", () => {
   assert.match(routesSource, /Restrict the \/model picker to this route's models/);
   assert.match(routesSource, /availableModels/);
   assert.match(routesSource, /enforceAvailableModels/);
+});
+
+test("route editor uses the shared control-room form hierarchy and expressive choice controls", () => {
+  for (const className of ["claude-route-editor", "claude-route-form-section", "claude-route-toggle", "claude-role-grid", "claude-role-card"])
+    assert.match(routesSource, new RegExp(className));
+  assert.match(providerCssSource, /\.claude-route-editor\s*\{/);
+  assert.match(providerCssSource, /\.claude-route-form-section\s*\{/);
+  assert.match(providerCssSource, /\.claude-route-toggle\s+input\[type="checkbox"\]\s*\{[^}]*appearance:\s*none/is);
+  assert.match(providerCssSource, /\.claude-role-card\s*\{[^}]*border-radius:\s*14px/is);
+  assert.match(providerCssSource, /\.claude-route-dialog \.dialog__actions\s*\{[^}]*border-radius:\s*16px/is);
+});
+
+test("route editor uses branded stepper controls for context values", () => {
+  assert.match(routesSource, /claude-number-control/);
+  assert.match(routesSource, /data-number-step="down"/);
+  assert.match(routesSource, /data-number-step="up"/);
+  assert.match(routesSource, /numberControl\(\{ id: "claudeCompatContext"[^}]*step: 10000/s);
+  assert.match(routesSource, /numberControl\(\{ id: "claudeCompatContext"[^}]*start: 100000/s);
+  assert.match(routesSource, /numberControl\(\{ id: "claudeRouteCompact"[^}]*step: 10000/s);
+  assert.match(routesSource, /data-number-control/);
+  assert.match(routesSource, /const raw = input\.value\.trim\(\)/);
+  assert.match(routesSource, /raw === ""/);
+  assert.match(providerCssSource, /\.claude-number-control\s*\{/);
+  assert.match(providerCssSource, /::-webkit-inner-spin-button/);
+  assert.match(providerCssSource, /\.claude-number-control__field input\.claude-route-number\s*\{[^}]*-moz-appearance:\s*textfield/s);
+  assert.match(providerCssSource, /\.claude-number-control__field input\.claude-route-number::-webkit-inner-spin-button[^}]*-webkit-appearance:\s*none/s);
 });
 
 test("auto-compact window is optional via an enable checkbox", () => {

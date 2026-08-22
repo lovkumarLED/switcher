@@ -36,8 +36,14 @@ profiles/default/omniroute-models.json   (optional, per-provider models)
 profiles/default/plugins.json    (optional)
 profiles/default/mcp.json        (optional)
 profiles/default/lsp.json        (optional)
-providers/omniroute.json         (provider definition)
+providers/<id>.json              (dynamic provider definitions,
+                                  dual-key apiKey <-> options.apiKey)
 ```
+
+Providers are discovered dynamically as `providers/<id>.json` files
+(dual-key `apiKey` <-> `options.apiKey`); builders merge ACTIVE providers
+only. Currently shipped: omniroute, tokenrouter, orcarouter,
+cli-proxy-api.
 
 Additional profiles (`coding`, `experimental`, `minimal`) contain `settings.json` (+ `<provider>-models.json` model files, `target.json`, and `lsp.json` as needed) and contribute their provider selection to the build. The Kilo and OpenCode adapters both carry `lsp.json` (disabled by default).
 
@@ -53,33 +59,59 @@ JSON
 
 The project folders and their responsibilities.
 
-```
-opencode/
+The repository root IS `docs/`. Runtime agent configs live one level up
+(`~/.config/opencode`).
 
-├── backup/
-├── docs/
-├── profiles/
-├── providers/
-├── schemas/
-├── scripts/
-└── opencode.json
+```
+docs/
+
+├── app/                        self-contained Switcher app
+│   ├── app/                    Python backend package + tests
+│   ├── assets/                 vanilla-JS SPA assets
+│   └── engine/                 bundled BDF engine
+│       ├── scaffold-agent.ps1  typed by main-config presence
+│       │                       (kilo.json → K1, otherwise V2.7)
+│       ├── build-opencode-v2.7.ps1 / test-opencode-v2.7.ps1
+│       │                       V2.7 builder + test harness
+│       │                       (40 tests incl. 5 LSP)
+│       ├── kilo/               build-kilo-v1.ps1 /
+│       │                       test-kilo-v1.ps1 (37 tests)
+│       ├── claude-code/        routing core + production builder
+│       │                       + Gate2/Gate3 harnesses
+│       └── schemas/
+├── adapters/<agent>/           unique-adapter docs
+├── bdf/                        framework docs + templates
+├── planning/
+├── AI/
+└── <root guides>               README.md, ADAPTER.md, ...
 ```
 
-| Folder | Responsibility |
+| Path | Responsibility |
 |--------|----------------|
-| `profiles/` | Profile-specific configuration |
-| `providers/` | Provider definitions (optionally with provider-specific `models.json`) |
-| `schemas/` | Reserved for future JSON Schema validation |
-| `scripts/` | Builder, test, and release manager scripts |
-| `backup/` | Automatic configuration backups |
-| `docs/` | Project documentation |
+| `app/` | Self-contained Switcher app (backend package, SPA assets, tests) |
+| `app/engine/scaffold-agent.ps1` | Scaffold typed by main-config presence (`kilo.json` → K1, otherwise V2.7) |
+| `app/engine/build-/test-opencode-v2.7.ps1` | V2.7 builder + test harness (40 tests incl. 5 LSP) |
+| `app/engine/kilo/` | Kilo K1 builder + tests (`test-kilo-v1.ps1`, 37 tests) |
+| `app/engine/claude-code/` | Routing core + production builder + Gate2/Gate3 harnesses |
+| `app/engine/schemas/` | JSON schemas |
+| `adapters/<agent>/` | Unique-adapter documentation per target agent |
+| `bdf/` | Generic framework docs + templates |
+| `planning/`, `AI/` | Plans/gate evidence; AI working notes |
+| `<root guides>` | README.md, ADAPTER.md, ARCHITECTURE.md, ... |
 
 ---
 
 ## Supported Providers
 
+Providers are dynamic `<id>.json` files (dual-key `apiKey` <->
+`options.apiKey`); the builders merge ACTIVE providers only. Currently
+shipped:
+
 ```
 omniroute
+tokenrouter
+orcarouter
+cli-proxy-api
 ```
 
 ---
@@ -201,6 +233,9 @@ The builder generates this artifact from the source configuration.
 
 It is never edited manually.
 
+Each build also writes a provenance sidecar (`.provenance.json`, sha256 of
+the artifact + inputs) next to the generated config.
+
 > **Agent config warning:** the builders generate `opencode.json` (OpenCode) /
 > `kilo.json` (Kilo). Do NOT create `opencode.jsonc` next to `opencode.json` —
 > OpenCode reads the `.jsonc` *instead of* the `.json` when both exist, and your
@@ -319,6 +354,14 @@ carry unique bounded adapters for targets whose contracts differ materially
 from the universal scaffold. Each unique adapter owns `adapters/<agent>/`
 (fixed five-file documentation contract) and an approved implementation
 mapping. Target-specific detail lives in the adapter documents, not here.
+
+Currently shipped unique adapters:
+
+- **Claude Code bounded routing adapter** — routes CRUD, apply/restore
+  real-target lock OPEN by owner decision, DPAPI credential store, managed
+  env vars, model roles sonnet/haiku/opus/fable, read-only inventory scan;
+  LIVE VALIDATED Gate5B PASS re-run 2026-08-22.
+- **KiloCode K1** — scaffold type inference.
 
 ---
 

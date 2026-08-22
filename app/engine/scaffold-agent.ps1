@@ -426,9 +426,11 @@ if ($Bootstrap) {
     # downloaded copy can generate builders for any agent without touching
     # the developer's machine. kilo agents get the K1 adapter (writes
     # kilo.json), everything else the V2.7 opencode builder (writes
-    # opencode.json via target.json).
+    # opencode.json via target.json). Custom-named agents (e.g. "kilo-test")
+    # are typed by their main config file, not by their registered name.
+    $IsKiloType = ($Agent -eq "kilo") -or (Test-Path (Join-Path $ConfigRoot "kilo.json"))
     $Source = if ($BuilderSource) { $BuilderSource }
-              elseif ($Agent -eq "kilo") { Join-Path $PSScriptRoot "kilo\build-kilo-v1.ps1" }
+              elseif ($IsKiloType) { Join-Path $PSScriptRoot "kilo\build-kilo-v1.ps1" }
               else { Join-Path $PSScriptRoot "build-opencode-v2.7.ps1" }
     if (-not (Test-Path $Source)) { $Source = Join-Path $PSScriptRoot "build-opencode-v2.7.ps1" }
     if (-not (Test-Path $Source)) { $Source = Join-Path $PSScriptRoot "build-opencode.ps1" }

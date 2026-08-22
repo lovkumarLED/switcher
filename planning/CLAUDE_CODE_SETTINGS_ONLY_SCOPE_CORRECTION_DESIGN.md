@@ -61,7 +61,7 @@ manages the four role aliases `env.ANTHROPIC_DEFAULT_OPUS_MODEL`,
 removed otherwise), and the two top-level keys `availableModels` (the route's
 model set) + `enforceAvailableModels` (true) whenever the route restricts the
 `/model` picker. The surgical byte-preserving patch philosophy is unchanged;
-see `superpowers/specs/2026-08-17-claude-model-roles-design.md`.
+see `planning/designs/2026-08-17-claude-model-roles-design.md`.
 
 When applying one auth strategy, BDF removes only the opposite auth field. It
 does not remove or alter any other environment entry.

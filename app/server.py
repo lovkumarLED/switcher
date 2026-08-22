@@ -6,6 +6,7 @@ import webbrowser
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -48,6 +49,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+_ALLOWED_HOSTS = {f"{config.HOST}:{config.PORT}", f"localhost:{config.PORT}"}
+_ALLOWED_ORIGINS = {f"http://{config.HOST}:{config.PORT}", f"http://localhost:{config.PORT}"}
+
+
+@app.middleware("http")
+async def enforce_loopback_origin(request, call_next):
+    """DNS-rebinding / cross-site write protection for every API and proxy route.
+
+    Static assets stay open (read-only, no secrets); everything under /api and
+    /v1 requires a loopback Host and, when present, a loopback Origin header.
+    """
+    path = request.url.path
+    if path.startswith("/api") or path.startswith("/v1"):
+        if request.headers.get("host", "") not in _ALLOWED_HOSTS:
+            return JSONResponse({"detail": "Request origin not allowed."}, status_code=403)
+        origin = request.headers.get("origin")
+        if origin is not None and origin not in _ALLOWED_ORIGINS:
+            return JSONResponse({"detail": "Request origin not allowed."}, status_code=403)
+    return await call_next(request)
 
 app.include_router(serve_router)
 app.include_router(agents_router)

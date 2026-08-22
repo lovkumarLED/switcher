@@ -14,7 +14,7 @@ Evidence date: 2026-08-17
 | Unit tests (frontend contract) | Gate 4A | Capability-driven UI, routes workspace, adaptive pages, compatibility assistant (35 tests) |
 | Regression tests | Every gate | Gate 2 65/65, Gate 3 overall pass, OpenCode 34/34, Kilo 32/32, focused and full Python and frontend suites (exact commands below) |
 | Integration tests | Gate 4A | In-process app API integration on temporary GUID roots with the profile root injected; never against the real profile |
-| Live validation | Gate 5 (corrected env-only contract) | Real-target behavior; PASSED 2026-08-17 (`planning/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md`) |
+| Live validation | Gate 5 (corrected env-only contract) | Real-target behavior; PASSED 2026-08-17 (`planning/claude-code/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md`) |
 
 ## Isolation and privacy constraints
 

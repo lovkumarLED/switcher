@@ -25,19 +25,39 @@ Testing ensures that:
 
 This document describes the manual testing process.
 
-Automated testing is provided by three test harnesses:
+Automated testing is provided by the current harnesses bundled at `docs/app/engine/`:
 
 ```
-scripts/test-opencode-v2.ps1
-scripts/test-opencode-v2.5.ps1
-scripts/test-opencode-v2.7.ps1
+app/engine/test-opencode-v2.7.ps1         (OpenCode gate: 40 tests incl. 5-test LSP group)
+app/engine/kilo/test-kilo-v1.ps1          (Kilo gate: 37 tests incl. LSP group)
+app/engine/claude-code/test-claude-code.ps1       (Claude Code Gate 2: 73 checks)
+app/engine/claude-code/test-provider-model.ps1    (Claude Code Gate 3 evidence harness: OVERALL PASS)
 ```
 
-The V2.1 harness runs the builder against isolated temporary fixtures and verifies both success and failure behavior.
+| Harness | Gate | Coverage |
+|---------|------|----------|
+| `app/engine/kilo/test-kilo-v1.ps1` | Kilo builder gate | 37 tests incl. LSP group |
+| `app/engine/claude-code/test-claude-code.ps1` | Claude Code Gate 2 | 73 checks |
+| `app/engine/claude-code/test-provider-model.ps1` | Claude Code Gate 3 | Evidence harness (OVERALL PASS) |
+
+The legacy `test-opencode-v2.ps1` / `test-opencode-v2.5.ps1` scripts exist only in the deployed `~/.config/opencode/scripts` as frozen history.
+
+## App test suites
+
+Run from `docs/app`:
+
+```
+env\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"   # Python unittest: 270 green
+node --test tests/*.test.mjs                                           # Node contracts: 192 green
+```
+
+Zero accepted baseline failures policy: every suite must finish fully green before release.
+
+Frozen history — retained in deployed scripts only: the V2.1 harness runs the builder against isolated temporary fixtures and verifies both success and failure behavior.
 
 It also runs the release manager against a temp copy of the docs and verifies the generated release documentation.
 
-The V2.5 harness (Active-Provider Selector) verifies the V2.5 builder against isolated temporary fixtures in the same style.
+Frozen history — retained in deployed scripts only: the V2.5 harness (Active-Provider Selector) verifies the V2.5 builder against isolated temporary fixtures in the same style.
 
 The V2.7 harness (JSON Schema Validation) verifies the V2.7 builder against isolated temporary fixtures: schema validation, pre-flight checks, dry-run, retention, provenance, diagnostics, diff summary, P1/P2 policy.
 
@@ -74,7 +94,7 @@ powershell -File scripts/test-opencode-v2.ps1
 
 The harness exits non-zero when any test fails.
 
-The full suite is ALL THREE harnesses green: 17/17 (V2.1) + 13/13 (V2.5) + 33/33 (V2.7).
+The full release gate is: opencode 40/40 + kilo 37/37 + Gate 2 73 checks + Gate 3 PASS + app suites (Python unittest 270 green from docs/app/tests, Node contracts 192 green).
 
 ---
 
@@ -895,6 +915,8 @@ Different outputs indicate a regression or non-deterministic behavior.
 
 # Release Docs Test Group (Tests 10-17)
 
+(Frozen history — retained in deployed scripts only.)
+
 The Release Docs group verifies the release pipeline (registry → release manager → generated documentation).
 
 All tests except test 17 run against an isolated temp copy of the docs.
@@ -924,6 +946,8 @@ Expected: 17/17 PASSED, exit 0.
 
 # V2.5 Builder Test Group
 
+(Frozen history — retained in deployed scripts only.)
+
 The V2.5 group verifies the Active-Provider Selector builder (`scripts/build-opencode-v2.5.ps1`) against isolated temporary fixtures.
 
 | Test | Name | Asserts |
@@ -952,7 +976,7 @@ powershell -File scripts/test-opencode-v2.5.ps1
 
 Expected: 13/13 PASSED, exit 0.
 
-The definition of complete is ALL THREE harnesses green: 17/17 (V2.1) + 13/13 (V2.5) + 33/33 (V2.7).
+The definition of complete is the current release gate: opencode 40/40 + kilo 37/37 + Gate 2 73 checks + Gate 3 PASS + app suites (Python unittest 270 green from docs/app/tests, Node contracts 192 green).
 
 ---
 
@@ -970,6 +994,7 @@ The V2.7 group verifies the JSON Schema builder (`scripts/build-opencode-v2.7.ps
 | Provenance | Sidecar fields and SHA correct |
 | Diff summary | Added/Removed lines; identical input silent |
 | Reasoning formats | OpenAI (`reasoningEffort`), Claude (`thinking.budgetTokens`) and Gemini (`thinkingConfig.thinkingBudget`) variant shapes pass schema validation and merge into the generated config; provider `reasoningFormat` field accepted |
+| LSP | Five tests: enabled-object round-trip; disabled emits false; absent lsp.json omits the key; false emits false; enabled true |
 
 Run the V2.7 harness with:
 
@@ -977,7 +1002,7 @@ Run the V2.7 harness with:
 powershell -File scripts/test-opencode-v2.7.ps1
 ```
 
-Expected: 33/33 PASSED, exit 0.
+Expected: 40/40 PASSED, exit 0.
 
 ---
 
@@ -1057,7 +1082,7 @@ Before considering a build complete:
 
 Future versions may extend automated testing with:
 
-- JSON schema validation.
+- Builder unit tests.
 - Builder unit tests.
 - Integration testing.
 - Configuration comparison.

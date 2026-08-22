@@ -22,6 +22,25 @@ test("integrations uses the approved reference composition", () => {
   assert.match(shell, /integration-workspace\.css/);
 });
 
+test("integration plugin and MCP blocks use shared control-room accents", () => {
+  assert.match(view, /integration-plugins[^\"]*control-room-card--plugins/);
+  assert.match(view, /integration-mcp[^\"]*control-room-card--mcp/);
+  assert.match(css, /\.control-room-card--plugins/);
+  assert.match(css, /\.control-room-card--mcp/);
+});
+
+test("integration page framing uses the shared control-room surfaces", () => {
+  assert.match(view, /integration-notice control-room-card control-room-card--settings/);
+  assert.match(view, /integration-build-card control-room-card control-room-card--build/);
+  assert.match(css, /\.integration-notice\.control-room-card/);
+  assert.match(css, /\.integration-build-card\.control-room-card/);
+});
+
+test("integrations keeps the page focused by omitting helper subtitles", () => {
+  assert.doesNotMatch(view, /Add tools and extensions to/);
+  assert.doesNotMatch(view, /class="integration-label">Active providers</);
+});
+
 test("integrations keeps real actions wired", () => {
   for (const action of ["addPlugin", "addMcp", "testPrimary", "copyEndpoint", "buildConfig"])
     assert.match(view, new RegExp(`id=["']${action}["']`));
@@ -59,4 +78,11 @@ test("integrations carries an LSP block with a build toggle between plugins and 
 test("lsp expert json dialog is wired", () => {
   assert.match(page, /openLspJsonDialog/);
   assert.match(page, /JSON\.parse/);
+});
+
+test("LSP changes update only the LSP card", () => {
+  assert.match(page, /lspCard/);
+  assert.match(page, /\.integration-lsp"\)\?\.replaceWith/);
+  assert.match(page, /lspCard\(currentLsp/);
+  assert.doesNotMatch(page, /api\.setLsp\(currentLsp\.lsp, event\.target\.checked\)[\s\S]{0,220}refresh\(\)/);
 });

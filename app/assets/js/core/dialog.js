@@ -18,12 +18,17 @@ function closeCurrent(reason = "dismiss") {
   const callback = closeCallback; closeCallback = null; callback?.(reason);
 }
 
-export function openDialog({ title, content, actions = "", wide = false, trigger = document.activeElement, onOpen, onClose } = {}) {
+export function openDialog({ title, content, actions = "", wide = false, variant = "", eyebrow = "Switcher", headerMark = "", headerMeta = "", trigger = document.activeElement, onOpen, onClose } = {}) {
   lastTrigger = trigger;
   closeCallback = onClose || null;
   const layer = document.querySelector("#dialogLayer");
-  layer.innerHTML = `<div class="dialog-backdrop"><section class="dialog${wide ? " dialog--wide" : ""}" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><header class="dialog__head"><div><p class="eyebrow">Switcher</p><h2 id="dialogTitle"></h2></div><button class="icon-button dialog__close" type="button" data-dialog-close aria-label="Close dialog">×</button></header><div class="dialog__body"></div>${actions ? `<footer class="dialog__actions">${actions}</footer>` : ""}</section></div>`;
+  const safeVariant = String(variant || "").replace(/[^a-z0-9_-]/gi, "");
+  const dialogClass = ["dialog", wide ? "dialog--wide" : "", safeVariant ? `dialog--${safeVariant}` : ""].filter(Boolean).join(" ");
+  const mark = headerMark ? `<div class="dialog__head-mark">${headerMark}</div>` : "";
+  const meta = headerMeta ? `<div class="dialog__head-meta">${headerMeta}</div>` : "";
+  layer.innerHTML = `<div class="dialog-backdrop"><section class="${dialogClass}" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><header class="dialog__head"><div class="dialog__head-main">${mark}<div><p class="eyebrow" id="dialogEyebrow"></p><h2 id="dialogTitle"></h2></div></div><div class="dialog__head-actions">${meta}<button class="icon-button dialog__close" type="button" data-dialog-close aria-label="Close dialog">×</button></div></header><div class="dialog__body"></div>${actions ? `<footer class="dialog__actions">${actions}</footer>` : ""}</section></div>`;
   const dialog = layer.querySelector(".dialog");
+  dialog.querySelector("#dialogEyebrow").textContent = eyebrow || "Switcher";
   dialog.querySelector("#dialogTitle").textContent = title || "Dialog";
   const body = dialog.querySelector(".dialog__body");
   if (typeof content === "string") body.innerHTML = content;
@@ -45,6 +50,24 @@ export function openDialog({ title, content, actions = "", wide = false, trigger
   requestAnimationFrame(() => (focusable(dialog)[0] || dialog).focus());
   onOpen?.(dialog);
   return { dialog, close: closeCurrent };
+}
+
+export function detailStatus(label, tone = "neutral") {
+  return `<span class="detail-status detail-status--${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
+}
+
+export function detailSummaryItem(label, value, tone = "") {
+  const toneClass = tone ? ` detail-summary__value--${escapeHtml(tone)}` : "";
+  return `<div class="detail-summary__item" role="listitem"><span>${escapeHtml(label)}</span><strong class="detail-summary__value${toneClass}">${escapeHtml(value)}</strong></div>`;
+}
+
+export function detailSection(label, content, className = "") {
+  const extraClass = className ? ` ${escapeHtml(className)}` : "";
+  return `<section class="detail-section${extraClass}"><div class="detail-section__head"><p class="eyebrow">${escapeHtml(label)}</p><span class="detail-section__rule" aria-hidden="true"></span></div>${content}</section>`;
+}
+
+export function detailView({ summary = "", sections = "" } = {}) {
+  return `<div class="detail-view">${summary ? `<div class="detail-summary" role="list">${summary}</div>` : ""}${sections}</div>`;
 }
 
 export function confirmAction({ title, message, confirmLabel = "Continue", danger = false, trigger } = {}) {

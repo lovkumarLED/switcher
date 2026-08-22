@@ -319,16 +319,23 @@ function openManualDialog() {
   dialog.hidden = false;
   host.querySelector("#manualDialogError").textContent = "";
   host.querySelector("#manualAgentPath").focus();
-  const onKey = event => {
+  if (manualDialogKeyHandler) document.removeEventListener("keydown", manualDialogKeyHandler);
+  manualDialogKeyHandler = event => {
     if (event.key !== "Escape") return;
     closeManualDialog();
-    document.removeEventListener("keydown", onKey);
   };
-  document.addEventListener("keydown", onKey);
+  document.addEventListener("keydown", manualDialogKeyHandler);
 }
 
+let manualDialogKeyHandler = null;
+
 function closeManualDialog() {
-  host.querySelector("#manualDialog").hidden = true;
+  const dialog = host.querySelector("#manualDialog");
+  if (dialog) dialog.hidden = true;
+  if (manualDialogKeyHandler) {
+    document.removeEventListener("keydown", manualDialogKeyHandler);
+    manualDialogKeyHandler = null;
+  }
 }
 
 async function confirmManualFolder() {

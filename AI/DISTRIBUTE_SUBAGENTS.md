@@ -47,7 +47,7 @@ main job from their summaries. You never bulk-read project docs yourself.
 
 Project-specific dispatch (use MORE sub-agents here — this is what they are for):
 
-- FULL_SYSTEM_CHECK (runbook `AI/FULL_SYSTEM_CHECK.md`): Parts 1, 5, 6 are pure
+- FULL_SYSTEM_CHECK (runbook `AI/full-system-check/FULL_SYSTEM_CHECK.md`): Parts 1, 5, 6 are pure
   inspection → dispatch 2-3 parallel reader/builder sub-agents (one per part) and work
   from their findings tables. Only Parts 3-4 (running harnesses / clean-room builds)
   stay inline because they execute on this machine.
@@ -115,7 +115,7 @@ Rules:
 - Existing entries are read-only; only allowed edits are the `← recent session` tag swap,
   inserting the new entry at top, and trimming to the newest 5.
 - Large version builds that exceed the context budget follow the checkpoint + resume rule
-  in `AI/CONTINUE_PROJECT_BUILD.md`.
+  in `AI/builder/CONTINUE_PROJECT_BUILD.md`.
 
 ## Project ground rules (from docs — the sub-agents will refresh details on demand)
 

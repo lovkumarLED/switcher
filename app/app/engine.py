@@ -37,7 +37,7 @@ class ScaffoldBody(BaseModel):
 
 
 class BuildBody(BaseModel):
-    profile: str = "coding"
+    profile: str | None = None
 
 
 def _run_ps1(args, timeout):
@@ -103,11 +103,12 @@ def scaffold(body: ScaffoldBody):
 
 @router.post("/build")
 def build(body: BuildBody):
-    if any(part in body.profile for part in ("/", "\\", "..")):
-        raise HTTPException(400, "Invalid profile name.")
     agent, directory = agentstore.current_agent()
     if not agent or not directory:
         raise HTTPException(400, "No agent is set up yet. Run the setup wizard first.")
+    profile = body.profile or agentstore.active_profile(directory)
+    if any(part in profile for part in ("/", "\\", "..")):
+        raise HTTPException(400, "Invalid profile name.")
     script = agentstore.find_builder_script(Path(directory), agent)
     if not script:
         raise HTTPException(
@@ -115,7 +116,7 @@ def build(body: BuildBody):
             f"No builder script for '{agent}' was found. Run 'Generate my builder' first.",
         )
     code, output = _run_ps1(
-        [str(script), "-Profile", body.profile, "-NonInteractive", "-ConfigRoot", str(directory)],
+        [str(script), "-Profile", profile, "-NonInteractive", "-ConfigRoot", str(directory)],
         300,
     )
     return {"ok": code == 0, "output": output}
@@ -138,7 +139,10 @@ def verify_setup(body: VerifyBody):
     if not agent or not directory:
         raise HTTPException(400, "No agent is set up yet. Run the setup wizard first.")
 
-    providers = agentstore.list_providers(directory)
+    # The build merges ACTIVE providers only, so verification must judge the
+    # same set - an intentionally inactive provider file never blocks setup.
+    active_ids = set(agentstore.get_active_providers(directory, existing_only=True))
+    providers = [p for p in agentstore.list_providers(directory) if p["id"] in active_ids]
     results = []
     for provider in providers:
         try:
@@ -175,8 +179,9 @@ def verify_setup(body: VerifyBody):
     import json as _json
     mcp_ok = False
     plugins_ok = False
-    mcp_path = directory / "profiles" / "coding" / "mcp.json"
-    plugins_path = directory / "profiles" / "coding" / "plugins.json"
+    profile = agentstore.active_profile(directory)
+    mcp_path = directory / "profiles" / profile / "mcp.json"
+    plugins_path = directory / "profiles" / profile / "plugins.json"
     try:
         data = _json.loads(mcp_path.read_text(encoding="utf-8-sig"))
         mcp_ok = isinstance(data.get("mcp"), dict) and bool(data.get("mcp"))
@@ -216,9 +221,15 @@ def revert_setup(body: VerifyBody):
     if not backup_dir.is_dir():
         return {"ok": False, "message": "No backup found - nothing to restore."}
 
-    # Newest timestamped backup of the agent's main config (kilo_*.json / opencode_*.json)
+    # Newest timestamped backup of the agent's main config. Backups are named
+    # after the main-config stem (opencode_*.json / kilo_*.json), not the
+    # registered agent name, so match on any stem that has a live main file.
     main_candidates = sorted(
-        (f for f in backup_dir.glob(f"{agent}_*.json")),
+        (
+            f
+            for f in backup_dir.glob("*_*.json")
+            if f.stem.count("_") >= 1 and (directory / f"{f.stem.split('_')[0]}.json").is_file()
+        ),
         key=lambda f: f.stat().st_mtime,
         reverse=True,
     )

@@ -49,6 +49,8 @@ $BuilderVersion = "1.0 (K1)"
 $ProfilesRoot  = Join-Path $ConfigRoot "profiles"
 $ProvidersRoot = Join-Path $ConfigRoot "providers"
 $ProfilePath   = Join-Path $ProfilesRoot $Profile
+$ProfileProvidersRoot = Join-Path $ProfilePath "providers"
+if (Test-Path $ProfileProvidersRoot) { $ProvidersRoot = $ProfileProvidersRoot }
 $BackupDir     = Join-Path $ConfigRoot "backup"
 
 # Target artifact resolution (P2): optional profiles/<profile>/target.json

@@ -11,7 +11,7 @@ approved; apply/restore work from the UI, real-target lock open)
 > variables from the session-45 flow are migrated into the store automatically
 > on next apply and deleted; pre-existing user variables are left untouched.
 > The route form and reference-only route store are unchanged. See
-> `superpowers/specs/2026-08-17-claude-credential-store-design.md`.
+> `planning/designs/2026-08-17-claude-credential-store-design.md`.
 Commits: none
 Supersedes in part: `planning/CLAUDE_CODE_FUTURE_CREDENTIAL_UX_FIX.md` (the
 env-reference developer workaround now gets an in-app key input; the full

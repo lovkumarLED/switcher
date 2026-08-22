@@ -261,6 +261,8 @@ profiles/<profile>/lsp.json
 
 ---
 
+# target.json
+
 Profile-level target artifact; selects the file the builder generates for this profile.
 
 ## Location

@@ -81,7 +81,9 @@ The following diagram illustrates the overall system structure.
         |                                            |
         | providers/                                 |
         |                                            |
-        | └── omniroute.json (may carry              |
+        | └── <id>.json x N - dynamic multi-provider |
+        |     files feed Discover -> active          |
+        |     selection -> merge (may carry          |
         |     reasoningFormat: opencode | openai |   |
         |     claude | gemini | none)                |
         |                                            |
@@ -174,7 +176,8 @@ The following diagram illustrates the overall system structure.
 
 # Component Overview
 
-The project consists of five major components.
+The project consists of five major components plus the Application layer
+(the self-contained Switcher app).
 
 ## 1. Profiles
 
@@ -252,6 +255,18 @@ OpenCode has no knowledge of:
 - documentation
 
 It only consumes the generated `opencode.json`.
+
+---
+
+## 6. Application Layer (Switcher App)
+
+A self-contained local web app wraps the same pipeline:
+
+- Python backend package `app/app/` — 23 modules incl. `preferences`,
+  `lsp`, `mcp`, `proxy`, `activity`, `claude_adapter`, `claude_credentials`
+  (DPAPI).
+- Vanilla-JS SPA `assets/js/` — pages incl. `claude-routes`.
+- Bundled engine under `app/engine/`.
 
 ---
 
@@ -493,7 +508,7 @@ The current architecture intentionally limits functionality to reduce complexity
 Current constraints include:
 
 - One active profile at build time
-- One provider definition (dynamic loading supported)
+- One ACTIVE provider set drives each build (dynamic multi-provider discovery; activeProviders selection)
 - One generated configuration
 - One active builder
 
@@ -515,14 +530,22 @@ Future architectural improvements will be introduced only after the current impl
 - Backup system
 - Generated configuration
 - Documentation
+- Backend API surface (preferences incl. browser pref, GET/PUT `/api/lsp`,
+  setup verify/revert, global loopback Host+Origin middleware on `/api` +
+  `/v1`, reserved-id rejection, proxy `..` rejection, `/v1` metadata-only
+  activity allowlist)
+- Claude Code routes adapter (live validated)
+- Kilo target
+- LSP/MCP/plugins merge
+- Provenance sidecar
+- Test suites green (Python 270 + Node contracts 192)
 
 ## Not Implemented
 
-The following are intentionally outside the current architecture.
-
-- Additional provider integrations
-
-These features are considered future enhancements and are not part of the current implementation.
+Previously listed: "Additional provider integrations". This is no longer
+accurate — multiple providers ship today (presets + dual-key mirror +
+Test connection), Claude Code ships as a unique bounded adapter, and a
+read-only inventory scan exists.
 
 ---
 

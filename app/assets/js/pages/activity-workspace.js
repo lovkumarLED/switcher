@@ -109,23 +109,23 @@ export function renderActivityWorkspace(workspace, { events, summary, days, onDa
     const filteredProviders = aggregateProviders(filtered);
 
     workspace.innerHTML = `<section class="activity-dashboard">
-      <header class="activity-page-head"><div><h1>Activity &amp; API logs</h1><p>Understand how your private local relay is being used.</p></div><div class="activity-filters">
+      <header class="activity-page-head"><div><h1>Activity &amp; API logs</h1></div><div class="activity-filters control-room-card control-room-card--settings">
         <label><span class="sr-only">Date range</span><select id="activityRange"><option value="1" ${days === 1 ? "selected" : ""}>Last 24 hours</option><option value="7" ${days === 7 ? "selected" : ""}>Last 7 days</option><option value="30" ${days === 30 ? "selected" : ""}>Last 30 days</option></select></label>
         <label><span class="sr-only">Provider</span><select id="activityProvider"><option value="all">All providers</option>${providers.map(item => `<option value="${escapeHtml(item.name)}" ${state.provider === item.name ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}</select></label>
         <label><span class="sr-only">Status</span><select id="activityStatus"><option value="all">All statuses</option><option value="success" ${state.status === "success" ? "selected" : ""}>Successful</option><option value="failed" ${state.status === "failed" ? "selected" : ""}>Failed</option></select></label>
       </div></header>
       <section class="activity-kpis" aria-label="Activity summary">
-        <article class="activity-kpi"><span class="activity-kpi__icon is-purple">${icon("calls")}</span><div><strong>${number(filtered.length)}</strong><b>API calls</b><small>Total in selected period</small></div></article>
-        <article class="activity-kpi"><span class="activity-kpi__icon is-green">${icon("success")}</span><div><strong>${successRate.toFixed(1)}%</strong><b>success</b><small>${number(successful)} successful</small></div></article>
-        <article class="activity-kpi"><span class="activity-kpi__icon is-purple">${icon("latency")}</span><div><strong>${number(medianLatency)} <em>ms</em></strong><b>median latency</b><small>P50 response time</small></div></article>
-        <article class="activity-kpi"><span class="activity-kpi__icon is-coral">${icon("failed")}</span><div><strong>${number(failed)}</strong><b>failed requests</b><small>${filtered.length ? (failed / filtered.length * 100).toFixed(1) : "0.0"}% of total</small></div></article>
+        <article class="activity-kpi control-room-card control-room-card--metric"><span class="activity-kpi__icon is-purple">${icon("calls")}</span><div><strong>${number(filtered.length)}</strong><b>API calls</b><small>Total in selected period</small></div></article>
+        <article class="activity-kpi control-room-card control-room-card--health"><span class="activity-kpi__icon is-green">${icon("success")}</span><div><strong>${successRate.toFixed(1)}%</strong><b>success</b><small>${number(successful)} successful</small></div></article>
+        <article class="activity-kpi control-room-card control-room-card--metric"><span class="activity-kpi__icon is-purple">${icon("latency")}</span><div><strong>${number(medianLatency)} <em>ms</em></strong><b>median latency</b><small>P50 response time</small></div></article>
+        <article class="activity-kpi control-room-card control-room-card--recent"><span class="activity-kpi__icon is-coral">${icon("failed")}</span><div><strong>${number(failed)}</strong><b>failed requests</b><small>${filtered.length ? (failed / filtered.length * 100).toFixed(1) : "0.0"}% of total</small></div></article>
       </section>
       <section class="activity-analytics-grid">
-        <article class="activity-panel activity-traffic"><header><h2>Requests over time</h2><div class="activity-legend"><span class="is-successful">Successful</span><span class="is-failed">Failed</span></div></header>${trafficChart(filtered, days)}</article>
-        <article class="activity-panel"><h2>Provider usage</h2>${usageChart(filteredProviders, filtered.length)}</article>
-        <article class="activity-panel"><h2>Latency by provider</h2>${latencyChart(filteredProviders)}</article>
+        <article class="activity-panel activity-traffic control-room-card control-room-card--chart"><header><h2>Requests over time</h2><div class="activity-legend"><span class="is-successful">Successful</span><span class="is-failed">Failed</span></div></header>${trafficChart(filtered, days)}</article>
+        <article class="activity-panel control-room-card control-room-card--usage"><h2>Provider usage</h2>${usageChart(filteredProviders, filtered.length)}</article>
+        <article class="activity-panel control-room-card control-room-card--metric"><h2>Latency by provider</h2>${latencyChart(filteredProviders)}</article>
       </section>
-      <section class="activity-panel activity-log-card"><header><h2>Recent proxy calls</h2><span>Sanitized metadata only</span></header><div class="activity-table-wrap"><table><thead><tr><th>Time</th><th>Provider</th><th>Model</th><th>Status</th><th>Latency</th><th>Tokens</th><th>Trace ID</th></tr></thead><tbody>${tableRows(filtered)}</tbody></table></div></section>
+      <section class="activity-panel activity-log-card control-room-card control-room-card--recent"><header><h2>Recent proxy calls</h2><span>Sanitized metadata only</span></header><div class="activity-table-wrap"><table><thead><tr><th>Time</th><th>Provider</th><th>Model</th><th>Status</th><th>Latency</th><th>Tokens</th><th>Trace ID</th></tr></thead><tbody>${tableRows(filtered)}</tbody></table></div></section>
     </section>`;
 
     workspace.querySelector("#activityRange").addEventListener("change", event => onDaysChange(Number(event.target.value)));

@@ -1,16 +1,8 @@
 import { api } from "../core/api.js";
 import { escapeHtml, notify } from "../core/dialog.js";
 import { isClaude } from "../core/capabilities.js";
+import { providerLogoMark } from "../core/provider-logo.js";
 import { renderClaudeRoutes } from "./claude-routes.js";
-
-const BRANDS = {
-  omniroute: "/assets/brands/omniroute.svg",
-  tokenrouter: "/assets/brands/tokenrouter.png",
-  openrouter: "/assets/brands/openrouter.svg",
-  openai: "/assets/brands/openai.svg",
-  litellm: "/assets/brands/litellm.png",
-  "cli proxy": "/assets/brands/cli-proxy.svg",
-};
 
 const PRESETS = {
   OmniRoute: { name: "OmniRoute", baseUrl: "http://localhost:20128/v1" },
@@ -51,19 +43,15 @@ export const circularProviderIndex = (index, delta, count) => count ? ((index + 
 
 const slugify = name => String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-function brandMark(name) {
-  const clean = String(name || "").toLowerCase();
-  const entry = Object.entries(BRANDS).find(([key]) => clean.includes(key));
-  if (entry) return `<span class="provider-brand-mark"><img src="${entry[1]}" alt=""></span>`;
-  if (clean.includes("gemini")) return '<span class="provider-brand-mark provider-brand-mark--gemini" aria-hidden="true">✦</span>';
-  return `<span class="provider-brand-mark provider-brand-mark--generated" aria-hidden="true">${escapeHtml(String(name || "P").slice(0, 1).toUpperCase())}</span>`;
+function brandMark(name, id) {
+  return providerLogoMark(name, { id, size: "lg", className: "provider-brand-mark" });
 }
 
 function card(provider, activeProvider) {
   const active = Boolean(provider.active);
   const modelCount = Array.isArray(provider.models) ? provider.models.length : 0;
   return `<article class="provider-deck-card" data-provider-card="${escapeHtml(provider.id)}" tabindex="0">
-    <div class="provider-deck-card__head">${brandMark(provider.name)}<div><h2>${escapeHtml(provider.name)}</h2><p class="provider-health ${active ? "is-healthy" : ""}"><span></span>${active ? "Active" : "Inactive"}</p></div></div>
+    <div class="provider-deck-card__head">${brandMark(provider.name, provider.id)}<div><h2>${escapeHtml(provider.name)}</h2><p class="provider-health ${active ? "is-healthy" : ""}"><span></span>${active ? "Active" : "Inactive"}</p></div></div>
     <dl class="provider-deck-card__meta">
       <div><dt>Models</dt><dd>${modelCount} ${modelCount === 1 ? "model" : "models"}</dd></div>
       <div><dt>Endpoint</dt><dd class="mono">${escapeHtml(provider.baseUrl || "—")}</dd></div>
@@ -92,7 +80,7 @@ function setupPanel() {
   const sdkButtons = SDK_CHOICES.map((choice, index) => `<button type="button" data-sdk="${escapeHtml(choice.npm)}" aria-pressed="${index === 0 ? "true" : "false"}">${escapeHtml(choice.label)}</button>`).join("");
   const formatButtons = FORMAT_CHOICES.map((choice, index) => `<button type="button" data-format="${escapeHtml(choice.id)}" aria-pressed="${index === 0 ? "true" : "false"}">${escapeHtml(choice.label)}</button>`).join("");
   const providerButtons = ["OmniRoute", "CLI Proxy", "LiteLLM", "Custom"].map(name => `<button type="button" data-provider-choice="${escapeHtml(name)}" aria-pressed="false">${escapeHtml(name)}</button>`).join("");
-  return `<aside class="provider-setup-panel" aria-labelledby="providerSetupTitle">
+  return `<aside class="provider-setup-panel control-room-card control-room-card--settings" aria-labelledby="providerSetupTitle">
     <div class="provider-setup-panel__head"><h2 id="providerSetupTitle">Add a provider</h2><button class="provider-panel-close" type="button" aria-label="Close provider setup">×</button></div>
     <ol class="provider-setup-steps" aria-label="Provider setup progress"><li data-panel-step="0"><b>1</b><span>Choose</span></li><li data-panel-step="1" disabled><b>2</b><span>Configure</span></li><li data-panel-step="2" disabled><b>3</b><span>Test</span></li></ol>
     <form id="embeddedProviderForm" class="provider-setup-form">
@@ -229,7 +217,7 @@ export function renderProviderWorkspace(workspace, { providers, activeProvider, 
   const items = providers;
   workspace.innerHTML = `<section class="providers-workspace">
     <header class="providers-page-head"><h1>Providers &amp; agents</h1><div class="providers-page-head__actions"><button id="reopenProviderPanel" class="button button--primary" type="button" hidden>Add provider</button><div class="provider-agent-selector" aria-label="Connected agent"><span class="status-dot status-dot--ok"></span>${escapeHtml(activeAgent)} · connected</div><button class="button button--quiet manage-agents" type="button">♙&nbsp; Manage agents</button></div></header>
-    <div class="provider-agent-tabs" role="tablist" aria-label="Coding agents"><button role="tab" type="button" data-provider-agent="opencode" aria-selected="${activeAgentId === "opencode"}"><img src="/assets/brands/opencode.svg" alt="">OpenCode</button><button role="tab" type="button" data-provider-agent="kilo" aria-selected="${activeAgentId === "kilo"}"><img src="/assets/brands/kilocode.svg" alt="">KiloCode</button><button role="tab" type="button" data-provider-agent="claude-code" aria-selected="${activeAgentId === "claude-code"}"><img src="/assets/brands/claudecode.svg" alt="">Claude Code</button></div>
+    <div class="provider-agent-tabs control-room-card control-room-card--settings" role="tablist" aria-label="Coding agents"><button role="tab" type="button" data-provider-agent="opencode" aria-selected="${activeAgentId === "opencode"}"><img src="/assets/brands/opencode.svg" alt="">OpenCode</button><button role="tab" type="button" data-provider-agent="kilo" aria-selected="${activeAgentId === "kilo"}"><img src="/assets/brands/kilocode.svg" alt="">KiloCode</button><button role="tab" type="button" data-provider-agent="claude-code" aria-selected="${activeAgentId === "claude-code"}"><img src="/assets/brands/claudecode.svg" alt="">Claude Code</button></div>
     <div class="providers-content"><div class="provider-browser"><section class="provider-deck-stage" aria-label="Configured providers">${items.map(item => card(item, activeProvider)).join("")}</section><div class="provider-deck-controls"><button class="icon-button" type="button" aria-label="Previous provider">←</button><span>Bring a provider forward</span><button class="icon-button" type="button" aria-label="Next provider">→</button></div></div>${setupPanel()}</div>
   </section>`;
   let index = 0;

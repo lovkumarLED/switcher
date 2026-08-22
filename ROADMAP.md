@@ -55,12 +55,14 @@ The path is:
 ```
 Current (Builder V2.7 JSON Schema Validation) ✅
 ↓
-KiloCode Builder V1 ✅ (Kilo V1, harness 31/31)
+KiloCode Builder V1 ✅ (Kilo V1, harness now 37/37 incl. 5 LSP tests)
 ↓
 BDF V3 (Universal Builder Generator) — in progress
 ```
 
-Claude Code is NOT on this path (entropic config, no provider support — DECISIONS.md 2026-08-08).
+Claude Code is not on this generic same-architecture path (its config is a single entropic
+~/.claude.json) — it is served instead by its own dedicated routing adapter, which is complete
+and live validated (see Narrow Unique Adapter below).
 
 Each step is built, tested, and validated before the next begins.
 
@@ -73,7 +75,7 @@ Real projects shape the framework — never assumptions.
 Current Version
 
 ```
-2.5.1
+2.5.3
 ```
 
 Current Status
@@ -85,7 +87,8 @@ Builder V2.7 JSON Schema Validation
 Journey Position
 
 ```
-Step 3 Universal Agent Framework core — IN PROGRESS (~90%); BDF V2.5 ✅, V2.7 gate ✅, KiloCode V1 COMPLETE ✅; next: BUILDER_PHASES gates for the universal framework, then Step 4 / Step 5
+Step 3 Universal Agent Framework core — IN PROGRESS (~98%); BDF V2.5 ✅, V2.7 gate ✅, KiloCode V1 COMPLETE ✅,
+Claude unique routing adapter COMPLETE + live validated ✅, full-system check V2 PASS ✅; next: BUILDER_PHASES gates for the universal framework, then Step 4 / Step 5
 ```
 
 The project currently provides:
@@ -397,7 +400,7 @@ Resilience rule (regeneration guarantee)
 
 The builder must be fully reproducible from documentation. If `scripts/*` are deleted, an
 agent must be able to regenerate `build-opencode-v2.5.ps1` with every feature by reading
-`BUILDER_SPEC.md` and `AI/BUILD_BUILDER_V2.5_SELECTOR.md`. The spec must describe every
+`BUILDER_SPEC.md` and `AI/builder/BUILD_BUILDER_V2.5_SELECTOR.md`. The spec must describe every
 stage, function contract, CLI switch, precedence rule, and file shape exactly.
 
 Expected release
@@ -459,7 +462,7 @@ Generate opencode.json
 
 Required before
 
-KiloCode Builder V1 (Phase 12 — COMPLETED 2026-08-07, harness 31/31).
+KiloCode Builder V1 (Phase 12 — COMPLETED 2026-08-07; harness grown to 37/37 with the LSP group).
 
 Note: Claude Code Builder V1 (Phase 11) is DROPPED — decision 2026-08-08,
 see `planning/DECISIONS.md`. Claude config (`~/.claude.json`) is entropic and does not
@@ -467,17 +470,21 @@ support adding providers; it will never work with this framework.
 
 ---
 
-## Phase 11 — Claude Code Builder V1 — SUPERSEDED ✅
+## Phase 11 — Claude Code Builder V1 — DROPPED THEN DELIVERED ✅ (unique routing adapter)
 
 Status
 
 ```
-RESOLVED — DROPPED, replaced by KiloCode (Phase 12) + universal scaffold (Phase 13)
+RESOLVED 2026-08-08 — DROPPED from the generic builder path (see original decision below).
+DELIVERED 2026-08-14..22 — as a dedicated unique bounded routing adapter (not a generic
+BDF profile builder): routes UI + apply/restore, DPAPI credential store, model roles,
+read-only inventory. LIVE VALIDATED (Gate 5B PASS 2026-08-17; re-executed live 2026-08-22).
 ```
 
-Decision: 2026-08-08. Claude Code config is a huge entropic `~/.claude.json` with no way
-to add providers (one provider at a time) — building a maintainable Claude builder from
-BDF is not feasible. Record kept for history.
+Original decision, kept for history: 2026-08-08. Claude Code config is a huge entropic
+`~/.claude.json` with no way to add providers (one provider at a time) — building a
+maintainable Claude *generic* builder from BDF is not feasible. That reasoning still holds;
+the shipped adapter solves it by managing one scalar route at a time instead.
 
 ---
 
@@ -486,7 +493,8 @@ BDF is not feasible. Record kept for history.
 Status
 
 ```
-COMPLETED 2026-08-07 — Kilo V1: build-kilo-v1.ps1, test-kilo-v1.ps1, scaffold-kilo-v1.ps1; harness 31/31 (KILO_ADAPTER + real ~/.config/kilo)
+COMPLETED 2026-08-07 — Kilo V1: build-kilo-v1.ps1, test-kilo-v1.ps1 bundled at app/engine/kilo/;
+harness now 37/37 incl. the LSP test group (KILO_ADAPTER + real ~/.config/kilo)
 ```
 
 Objective
@@ -569,7 +577,8 @@ Definition of complete
   files inside it — providers and models are 100% user-owned. The framework never
   copies another agent's config into a project; each agent's profiles are seeded
   from its own main JSON.
-- Claude Code is NOT supported (DECISIONS.md 2026-08-08).
+- Claude Code is supported through its own unique bounded routing adapter (complete, live validated);
+  it never joins the generic same-architecture builder path above.
 
 V3 is the first stable public milestone — not the end of development.
 
@@ -685,7 +694,7 @@ Definition of complete (when tried)
 | Phase 10 — BDF V2.5 Framework Generalization | ✅ Completed |
 | Phase 10.5 — Active-Provider Selector Builder | ✅ Completed |
 | Phase 10.6 — JSON Schema Validation | ✅ Completed |
-| Phase 11 — Claude Code Builder V1 | ✅ Resolved (dropped → KiloCode) |
+| Phase 11 — Claude Code Builder V1 | ✅ Complete (dedicated routing adapter, live validated) |
 | Phase 12 — KiloCode Builder V1 | ✅ Completed |
 | Phase 13 — BDF V3 Universal Builder Generator | 🔄 In Progress |
 | Phase 14 — GUI App (Switcher) | ✅ Completed |
@@ -752,8 +761,8 @@ A later approved direction: the Switcher app gains a narrow Claude Code routing
 adapter as a unique bounded adapter (one scalar route at a time), documented
 under `adapters/claude-code/`. This is a later decision that does not rewrite
 the historical Phase 11 outcome (see `planning/DECISIONS.md`). Lifecycle
-status: **Live validated** (2026-08-17, corrected Gate 5B live validation
-PASS + Gate 5C approved; see `planning/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md`).
+status: **Live validated** (2026-08-17 corrected Gate 5B PASS + Gate 5C approved;
+re-executed live on 2026-08-22 with byte-exact restore; see `planning/claude-code/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md`).
 The real-target lock stays closed until the owner opens it.
 
 ---

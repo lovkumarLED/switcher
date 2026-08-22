@@ -36,6 +36,7 @@ class PreferencesTests(unittest.TestCase):
                 "activityRetentionDays": 30,
                 "requestContentRedaction": True,
                 "reducedMotion": "system",
+                "browser": "default",
             },
         )
         with self.assertRaises(HTTPException) as context:
@@ -67,6 +68,7 @@ class PreferencesTests(unittest.TestCase):
             "activityRetentionDays": 30,
             "requestContentRedaction": True,
             "reducedMotion": "system",
+            "browser": "default",
         })
 
         preferences.PREFERENCES_FILE.write_text(
@@ -76,7 +78,15 @@ class PreferencesTests(unittest.TestCase):
         recovered = get_preferences()
         self.assertTrue(recovered["requestContentRedaction"])
         self.assertEqual(recovered["reducedMotion"], "system")
+        self.assertEqual(recovered["browser"], "default")
         self.assertEqual(recovered["futureSetting"], "kept")
+
+    def test_update_rejects_an_unknown_browser_preference(self):
+        """Catches persistence of a browser value the launcher cannot interpret."""
+        for invalid in ("chrome", "", None, True):
+            with self.assertRaises(HTTPException) as context:
+                update_preferences({"browser": invalid})
+            self.assertEqual(context.exception.status_code, 400)
 
     def test_update_rejects_an_unknown_motion_preference(self):
         """Catches persistence of a value the motion client cannot interpret."""

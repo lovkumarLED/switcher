@@ -43,7 +43,7 @@ Real projects shape the framework. Never assumptions.
 
 1. Every version builds on the previous version. Evolution, not rewrite.
 2. A version's scope is defined in `ROADMAP.md` phases and the build prompt
-   (`AI/CONTINUE_PROJECT_BUILD.md` checkpoint files).
+   (`AI/builder/CONTINUE_PROJECT_BUILD.md` checkpoint files).
 3. Versions that only strengthen the framework (like V2.5) still get a registry entry
    and a release.
 4. The release pipeline is the version's entry into history:
@@ -73,7 +73,7 @@ Skipping any of these means the version is not done. The journey does not advanc
 | `planning/BDF_ROAD_TO_V3.md` | Vision + version philosophy |
 | `ROADMAP.md` | Concrete phases and statuses |
 | `_agent/JOURNEY_TO_V3.md` | Live position on the road |
-| `AI/CONTINUE_PROJECT_BUILD.md` | How a version gets built across sessions |
+| `AI/builder/CONTINUE_PROJECT_BUILD.md` | How a version gets built across sessions |
 
 ---
 

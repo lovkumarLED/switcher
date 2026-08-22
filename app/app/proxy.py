@@ -90,7 +90,7 @@ async def proxy(path: str, request: Request):
             {"error": {"message": "The active provider has an invalid base URL."}},
             status_code=500,
         )
-    if not _PATH_SAFE_RE.match(path):
+    if not _PATH_SAFE_RE.match(path) or "/../" in f"/{path}/":
         return JSONResponse(
             {"error": {"message": "Invalid path."}},
             status_code=400,

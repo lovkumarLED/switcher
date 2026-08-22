@@ -143,12 +143,11 @@ LESSONS_LEARNED.md
 AI/
 
 planning/
+planning/designs/
 
 _agent/
 
 bdf/
-
-.superpowers/
 ```
 
 ## Managed By
@@ -158,6 +157,11 @@ Developer
 ## Manual Editing
 
 Yes.
+
+> Generated working folders (`.superpowers/`, `superpowers/`,
+> `.playwright-cli/`, `.playwright-mcp/`, `output/`) are git-ignored
+> implementation evidence and never part of the tracked structure. Durable
+> design records belong in `planning/designs/`.
 
 ---
 

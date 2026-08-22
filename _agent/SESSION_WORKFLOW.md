@@ -81,7 +81,7 @@ sessions get an entry, so the next session can resume from the `Next:` line.
 The user's context window is **200,000 tokens**. The hard ceiling for task work is
 **80% (≈160,000 tokens)**; wrap-up starts at **75% (≈150,000 tokens)**. The workflow
 protects this budget so work is never lost to a full context window. (AGENT.md and
-`AI/CONTINUE_PROJECT_BUILD.md` state the same 70-80% range; this document is the
+`AI/builder/CONTINUE_PROJECT_BUILD.md` state the same 70-80% range; this document is the
 canonical table.)
 
 ## Budget allocation
@@ -219,7 +219,7 @@ This document and `AGENT.md` must remain consistent with each other.
 
 `JOURNEY_TO_V3.md` is the journey tracker this workflow updates at every session end.
 
-`AI/CONTINUE_PROJECT_BUILD.md` defines the checkpoint + resume rule for large version
+`AI/builder/CONTINUE_PROJECT_BUILD.md` defines the checkpoint + resume rule for large version
 builds that exceed the context budget; checkpoint files point back here.
 
 `AGENT.md` also contains the project state rules.

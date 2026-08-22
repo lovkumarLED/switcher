@@ -152,17 +152,15 @@ app/
 AI/
 
 planning/
+planning/designs/
 
 _agent/
 
 bdf/
-
-.superpowers/
-superpowers/
 .claude/
 .gitignore
-bdf_dashboard.png
-bdf_add_provider.png
+adapters/
+LICENSE
 ```
 
 ## _agent/
@@ -179,14 +177,6 @@ SESSION_LOG.md
 SESSION_WORKFLOW.md
 ```
 
-## .superpowers/
-
-Contains the subagent-driven-development (SDD) ledger and per-session snapshots.
-
-The SDD ledger lives in `.superpowers/sdd/` and records task briefs, reports, and reviews for large plan builds.
-
-Per-session snapshots live in `.superpowers/snapshot-<SESSION N>/` and pin the builder-document set so a clean-room build can reproduce the exact feature set (see `AI/FULL_SYSTEM_CHECK.md` Part 5).
-
 ## planning/
 
 Contains long-term planning and vision documents.
@@ -202,10 +192,42 @@ FUTURE_IDEAS.md
 
 NEXT_PHASE_IMPLEMENTATION_PLAN.md
 
+claude-code/
+
+pi/
+
+SOL_ORCHESTRATION_POLICY.md
+
+UNIQUE_AGENT_ADAPTER_DOCUMENTATION_DESIGN.md
+
 VERSION_STRATEGY.md
 ```
 
 Defines the destination (BDF V3) and the version philosophy.
+
+## planning/claude-code/
+
+Contains the complete Claude Code adapter evidence chain: research plan, gate handoffs and reports (Gates 1-5), design records, and implementation reports. Referenced by the `adapters/claude-code/` documents, release notes, and the roadmap; moved here from `planning/` root so the adapter paper trail lives in one folder.
+
+## planning/pi/
+
+Pi-agent planning (currently `PI_RESEARCH.md`) ahead of Phase 15 verification.
+
+## planning/designs/
+
+Contains durable design records (moved from the former `superpowers/specs/`):
+approved design documents for shipped features such as reasoning formats, the
+Claude credential store, model roles, and LSP support. These are referenced by
+release notes and gate reports.
+
+## Generated artifacts (not in the repository)
+
+`.superpowers/`, `superpowers/` (plans/specs working folders),
+`.playwright-cli/`, `.playwright-mcp/`, and `output/` are generated
+implementation evidence — session snapshots, completed execution checklists,
+browser captures, and test output. They are git-ignored and must never be
+committed; durable design decisions belong in `planning/designs/` instead
+(see `AGENT.md` → "Generated Artifacts Rule").
 
 ## bdf/
 
@@ -232,10 +254,10 @@ Contains AI task documents.
 Includes the build-continuation rule:
 
 ```
-AI/CONTINUE_PROJECT_BUILD.md
+AI/builder/CONTINUE_PROJECT_BUILD.md
 ```
 
-- **`app/`** — the self-contained "Switcher" GUI app: `server.py` (FastAPI backend + local proxy), `app/` (Python package: config, storage, agents, discovery, providers, agentstore, engine, testing, plugins, mcp, proxy, serve, rules, banner), `gui.html` (frontend), `start.bat` (double-click launcher), `install.bat` (one-time installer: env + packages + desktop shortcut), `requirements.txt` (fastapi + uvicorn), `env/` (private venv, auto-created), `assets/` (logo + favicon), `lib/` (local Anime.js — no CDN), `tests/` (56 unit tests), `rule.md` (theme + agent rulebook), `README.md` (plain-language usage). **`engine/`** ships the full BDF engine inside the repo (scaffold-agent.ps1 generator, build/test-opencode-v2.7.ps1, kilo/ K1 adapter + harness, schemas/) so a downloaded copy generates working builders for any agent with zero external dependencies. Add-provider presets cover proxies (OmniRoute, LiteLLM, CLI Proxy) AND real providers (TokenRouter, Modal, OpenAI, Google Gemini, OpenRouter, NVIDIA NIM) with SDK auto-fill; the app writes the key in both agent contracts (`apiKey` + `options.apiKey`).
+- **`app/`** — the self-contained "Switcher" GUI app: `server.py` (FastAPI backend + local proxy), `app/` (Python package: config, storage, agents, discovery, providers, agentstore, engine, testing, plugins, mcp, lsp, preferences, profiles, activity, capabilities, proxy, serve, rules, banner, claude_adapter, claude_credentials, claude_envvars, claude_inventory), `gui.html` (frontend), `start.bat` (double-click launcher), `install.bat` (one-time installer: env + packages + desktop shortcut), `requirements.txt` (fastapi + uvicorn), `env/` (private venv, auto-created), `assets/` (logo, brand marks, fonts, demo GIFs), `lib/` (local Anime.js — no CDN), `tests/` (Python unittest suite + Node frontend contract tests), `rule.md` (theme + agent rulebook), `README.md` (plain-language usage). **`engine/`** ships the full BDF engine inside the repo (scaffold-agent.ps1 generator, build/test-opencode-v2.7.ps1, kilo/ K1 adapter + harness, claude-code/ routing core + production builder + Gate 2/Gate 3 harnesses + fixtures, schemas/) so a downloaded copy generates working builders for any agent with zero external dependencies. Add-provider presets cover proxies (OmniRoute, LiteLLM, CLI Proxy) AND real providers (TokenRouter, Modal, OpenAI, Google Gemini, OpenRouter, NVIDIA NIM) with SDK auto-fill; the app writes the key in both agent contracts (`apiKey` + `options.apiKey`).
 
 ## PROJECT_STATE.md
 
@@ -467,14 +489,17 @@ Contains provider definitions.
 
 Each provider describes how OpenCode communicates with an AI provider.
 
-The current implementation contains two providers (`omniroute.json` and
-`tokenrouter.json`); the builders discover every `*.json` in this folder.
+The current implementation contains four providers (`omniroute.json`,
+`tokenrouter.json`, `orcarouter.json`, and `cli-proxy-api.json`); the builders
+discover every `*.json` in this folder.
 
 ```
 providers/
 
 omniroute.json
 tokenrouter.json
+orcarouter.json
+cli-proxy-api.json
 ```
 
 ---

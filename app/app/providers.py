@@ -64,7 +64,7 @@ def list_formats():
 @router.get("/providers")
 def list_providers():
     agent_dir = agentstore.require_agent_dir()
-    active_ids = agentstore.get_active_providers(agent_dir)
+    active_ids = agentstore.get_active_providers(agent_dir, existing_only=True)
     providers = []
     for provider in agentstore.list_providers(agent_dir):
         models = agentstore.read_models(agent_dir, provider["id"], format_id=provider["reasoningFormat"])
@@ -104,7 +104,7 @@ def create_provider(body: ProviderBody):
             agent_dir, provider_id, [m.model_dump() for m in body.models],
             format_id=provider["reasoningFormat"],
         )
-    return _public(provider, agentstore.get_active_providers(agent_dir), models)
+    return _public(provider, agentstore.get_active_providers(agent_dir, existing_only=True), models)
 
 
 @router.put("/providers/{provider_id}")
@@ -127,7 +127,7 @@ def update_provider(provider_id: str, body: ProviderBody):
         models = agentstore.write_models(
             agent_dir, provider_id, [m.model_dump() for m in body.models], format_id=reasoning_format
         )
-    return _public(provider, agentstore.get_active_providers(agent_dir), models)
+    return _public(provider, agentstore.get_active_providers(agent_dir, existing_only=True), models)
 
 
 @router.delete("/providers/{provider_id}")

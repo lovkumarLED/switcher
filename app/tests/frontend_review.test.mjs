@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { canSubmitProviderStep, nextProviderStep, providerReviewData } from "../assets/js/pages/providers.js";
 import { motionIsReduced, sidebarBrandBurstPlan, startupAtmospherePose, startupPointerPose } from "../assets/js/core/motion.js";
@@ -8,6 +9,18 @@ import { createCloseSettlement } from "../assets/js/core/dialog.js";
 import { activateStartup, shouldKeepStartupGhostId, startupCanvasWidth, startupHandoffPlan, startupLayoutScale, welcomeMagentaSignalGeometry, welcomePreviewRequested } from "../assets/js/pages/startup.js";
 import { onboardingPreviewScreen, onboardingProgressState, onboardingScreenMarkup, onboardingSidebarState, onboardingTransitionDirection } from "../assets/js/pages/onboarding.js";
 import { settingsWorkspaceMarkup } from "../assets/js/pages/settings-workspace.js";
+
+test("startup branding describes agent and JSON configuration management", () => {
+  const sources = [
+    readFileSync(new URL("../gui.html", import.meta.url), "utf8"),
+    readFileSync(new URL("../assets/js/pages/startup.js", import.meta.url), "utf8"),
+  ];
+
+  for (const source of sources) {
+    assert.match(source, /Agent \+ JSON control/);
+    assert.doesNotMatch(source, /Free AI, one click/i);
+  }
+});
 
 test("welcome preview activation cannot enter onboarding", () => {
   const events = [];
@@ -70,10 +83,14 @@ test("onboarding screens preserve the approved visible copy and controls", () =>
 
   const provider = onboardingScreenMarkup("provider");
   assert.match(provider, /Add your first provider/);
-  assert.match(provider, /anthropic\/claude-3\.5-sonnet/);
+  assert.match(provider, /data-first-provider="litellm"/);
+  assert.match(provider, /data-first-provider="cli-proxy"/);
+  assert.match(provider, /data-first-provider="custom"/);
+  assert.match(provider, /\/assets\/brands\/litellm\.png/);
+  assert.match(provider, /\/assets\/brands\/cli-proxy\.svg/);
+  assert.match(provider, /Test connection/);
   assert.match(provider, /Save and continue/);
-  assert.match(provider, /\/assets\/brands\/openai\.svg/);
-  assert.match(provider, /\/assets\/brands\/openrouter\.svg/);
+  assert.match(provider, /Skip for now/);
 
   const ready = onboardingScreenMarkup("ready");
   assert.match(ready, /You’re ready/);

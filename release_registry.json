@@ -5,7 +5,7 @@
       "builderVersion": "V2.7",
       "date": "2026-08-17",
       "status": "Current",
-      "summary": "LSP support for OpenCode + KiloCode in BOTH the BDF engine and the Switcher app (Claude Code untouched). New profiles/<profile>/lsp.json source { \"lsp\": <bool|object>, \"enabled\": <bool> } seeded by the scaffold in EVERY profile (coding + experimental + minimal, disabled by default, user-owned after creation - Seed-IfMissing, never overwritten). Both builders (OpenCode V2.7 + Kilo K1) merge LSP: interactive \"LSP servers: [1] enabled [2] disabled (Enter keeps current)\" prompt (skipped under -NonInteractive, stored enabled used), backup-first persist, -WhatIf never writes, verification throws if an enabled LSP is missing from the output, diff summary adds/removes \"LSP servers\", Doctor reports it via the generic sources walk. New lsp.schema.json (Draft-07) pre-flight dependency. App: GET/PUT /api/lsp router + Integrations page LSP block between Plugins and MCP (on/off toggle persisted via PUT, server-name chips, \"Edit JSON\" expert dialog). Toggle OFF emits \"lsp\": false in the generated config (was: key removed). Harnesses: opencode 40/40, kilo 37/37 (5 new LSP tests each); full Python 217 (2 accepted preference baselines), full frontend 133 (1 accepted onboarding-copy baseline).",
+      "summary": "LSP support for OpenCode + KiloCode in BOTH the BDF engine and the Switcher app (Claude Code untouched). New profiles/<profile>/lsp.json source { \"lsp\": <bool or object>, \"enabled\": <bool> } seeded by the scaffold in EVERY profile (coding + experimental + minimal, disabled by default, user-owned after creation - Seed-IfMissing, never overwritten). Both builders (OpenCode V2.7 + Kilo K1) merge LSP: interactive \"LSP servers: [1] enabled [2] disabled (Enter keeps current)\" prompt (skipped under -NonInteractive, stored enabled used), backup-first persist, -WhatIf never writes, verification throws if an enabled LSP is missing from the output, diff summary adds/removes \"LSP servers\", Doctor reports it via the generic sources walk. New lsp.schema.json (Draft-07) pre-flight dependency. App: GET/PUT /api/lsp router + Integrations page LSP block between Plugins and MCP (on/off toggle persisted via PUT, server-name chips, \"Edit JSON\" expert dialog). Toggle OFF emits \"lsp\": false in the generated config (was: key removed). Harnesses: opencode 40/40, kilo 37/37 (5 new LSP tests each); full Python 217 (2 accepted preference baselines), full frontend 133 (1 accepted onboarding-copy baseline).",
       "highlights": [
         "Engine: lsp.json in every profile (disabled by default), seeded like mcp.json/plugins.json (Seed-IfMissing, never overwritten)",
         "Builders: Merge-Lsp - enabled -> generated config carries \"lsp\": <value> (true or object); disabled -> \"lsp\": false; no lsp.json -> no lsp key",
@@ -31,7 +31,7 @@
       "breakingChanges": "None",
       "migrationRequired": "No (existing profiles were backfilled with lsp.json enabled:false on disk; new scaffolds seed it)",
       "testingSummary": "Gate 2 65/65, Gate 3 OVERALL PASS (Claude untouched); opencode harness 40/40, kilo harness 37/37; full Python 217 (2 accepted preference baselines); full frontend 133 (1 accepted onboarding-copy baseline); git diff --check 0; live toggle ON->build->lsp:true, OFF->build->lsp:false on both agents, all snapshot files restored byte-equal; Gate 5B corrected live validation PASS 2026-08-17 (apply + /status + routing marker + byte-verified restore + relock verified)",
-      "knownIssues": "Accepted unrelated baselines unchanged (2 preference, 1 onboarding-copy). Gate 5B corrected live validation PASSED 2026-08-17 (sessions 46 + 48): transaction mechanics + routing evidence (fixed marker GATE5B_ROUTE_OK returned, applied model verified from structured metadata) - see planning/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md; Gate 5C documentation/release sync completed (planning/CLAUDE_CODE_GATE_5C_DOCUMENTATION_RELEASE_SYNC_REPORT.md). Claude adapter lifecycle is now Live validated; the real-target lock is OPEN (owner decision, session 48) so apply/restore work from the UI. Model-roles feature added (opus/sonnet/haiku/fable + picker allowlist) with two fixes (credential reload after server restart, dangling-comma on trailing-run removals) - see superpowers/specs/2026-08-17-claude-model-roles-design.md.",
+      "knownIssues": "Accepted unrelated baselines unchanged (2 preference, 1 onboarding-copy). Gate 5B corrected live validation PASSED 2026-08-17 (sessions 46 + 48): transaction mechanics + routing evidence (fixed marker GATE5B_ROUTE_OK returned, applied model verified from structured metadata) - see planning/claude-code/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md; Gate 5C documentation/release sync completed (planning/claude-code/CLAUDE_CODE_GATE_5C_DOCUMENTATION_RELEASE_SYNC_REPORT.md). Claude adapter lifecycle is now Live validated; the real-target lock is OPEN (owner decision, session 48) so apply/restore work from the UI. Model-roles feature added (opus/sonnet/haiku/fable + picker allowlist) with two fixes (credential reload after server restart, dangling-comma on trailing-run removals) - see planning/designs/2026-08-17-claude-model-roles-design.md.",
       "docsUpdated": [
         "README.md",
         "app/README.md",
@@ -66,12 +66,12 @@
         "adapters/claude-code/BUILDER_SPEC.md",
         "adapters/claude-code/COMPATIBILITY.md",
         "adapters/claude-code/TESTING.md",
-        "planning/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md",
-        "planning/CLAUDE_CODE_GATE_5C_DOCUMENTATION_RELEASE_SYNC_REPORT.md",
-        "planning/CLAUDE_CODE_SETTINGS_ONLY_SCOPE_CORRECTION_DESIGN.md",
-        "planning/CLAUDE_CODE_CREDENTIAL_UX_APP_MANAGED_ENV_VARS.md",
-        "superpowers/specs/2026-08-17-claude-model-roles-design.md",
-        "superpowers/specs/2026-08-17-claude-credential-store-design.md",
+        "planning/claude-code/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md",
+        "planning/claude-code/CLAUDE_CODE_GATE_5C_DOCUMENTATION_RELEASE_SYNC_REPORT.md",
+        "planning/claude-code/CLAUDE_CODE_SETTINGS_ONLY_SCOPE_CORRECTION_DESIGN.md",
+        "planning/claude-code/CLAUDE_CODE_CREDENTIAL_UX_APP_MANAGED_ENV_VARS.md",
+        "planning/designs/2026-08-17-claude-model-roles-design.md",
+        "planning/designs/2026-08-17-claude-credential-store-design.md",
         "app/app/claude_credentials.py",
         "app/app/claude_envvars.py",
         "app/app/claude_adapter.py",
@@ -81,7 +81,7 @@
         "app/assets/js/core/api.js",
         "app/tests/test_claude_credentials.py",
         "app/BUGFIXES.md",
-        "planning/CLAUDE_CODE_FUTURE_CREDENTIAL_UX_FIX.md"
+        "planning/claude-code/CLAUDE_CODE_FUTURE_CREDENTIAL_UX_FIX.md"
       ]
     },
     {
@@ -146,7 +146,7 @@
       "summary": "Real-provider compatibility: the app and the builders now write the API key in both places agents read it (provider.<id>.apiKey for OpenCode, provider.<id>.options.apiKey for Kilo), fixing the TokenRouter 401 in Kilo. The Switcher gains real-provider presets (TokenRouter, Modal, OpenAI, Google Gemini, OpenRouter, NVIDIA NIM) with SDK auto-fill. Builders mirror the dual key automatically at merge time, so builder-only users get the same result as app users. Reasoning formats: per-provider reasoning levels (opencode / openai / claude / gemini / none) with correct variant JSON per format (reasoningEffort, thinking.budgetTokens, thinkingConfig.thinkingBudget); interactive builder runs ask the developer, persist the choice backup-first, and filter invalid levels from the generated config. 56 app unit tests, kilo harness 31/31, opencode harness 33/33.",
       "highlights": [
         "Dual key placement in app/app/agentstore.py write_provider (top-level apiKey + options.apiKey), options preserved on write",
-        "Builder merge-stage dual-key normalization (K1 + V2.7 builders) ΓÇö fixes hand-written provider files on the next build; kilo harness grows a dedicated test (31/31)",
+        "Builder merge-stage dual-key normalization (K1 + V2.7 builders) — fixes hand-written provider files on the next build; kilo harness grows a dedicated test (31/31)",
         "Real-provider presets in the Add-provider form (URL + SDK auto-filled), presets kept in sync in app/app/config.py",
         "Kilo harness fixtures updated to per-provider models (the global models.json lookup was removed earlier; the fixtures still used it)",
         "Stale exact-name harness copy (test-kilo.ps1) replaced with the real K1 harness (backed up)",
@@ -164,7 +164,7 @@
       "bugFixes": [
         "Kilo 401 \"Token not provided\": key now lands in options.apiKey for runtime reading",
         "OpenCode /models not showing a provider: a stray opencode.jsonc (with disabled_providers) was shadowing the built opencode.json",
-        "Kilo harness: 10 tests used the removed global-models fixture and failed after the model guard change ΓÇö fixtures now use per-provider models",
+        "Kilo harness: 10 tests used the removed global-models fixture and failed after the model guard change — fixtures now use per-provider models",
         "PS 5.1: Add-Member required when creating a missing options object on parsed JSON"
       ],
       "breakingChanges": "None",

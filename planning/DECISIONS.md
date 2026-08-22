@@ -119,7 +119,7 @@ Why: The V3 goal is long; sessions are short. The tracker answers "where are we 
 toward V3?" at any moment without re-reading the project.
 
 Context: Session rules v1.3; integrates with the checkpoint/resume rule
-(`AI/CONTINUE_PROJECT_BUILD.md`).
+(`AI/builder/CONTINUE_PROJECT_BUILD.md`).
 
 Reversal: None.
 
@@ -132,7 +132,7 @@ hands the user a resume prompt.
 Why: A full context window loses all work; a checkpoint preserves it and lets any
 agent (OpenCode, Claude Code, KiloCode) continue the same build.
 
-Context: Rule in `AI/CONTINUE_PROJECT_BUILD.md`; context budget in
+Context: Rule in `AI/builder/CONTINUE_PROJECT_BUILD.md`; context budget in
 `_agent/SESSION_WORKFLOW.md`.
 
 Reversal: None.

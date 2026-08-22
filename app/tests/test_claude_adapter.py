@@ -1582,14 +1582,40 @@ class RoundTwoDefectTests(ClaudeAdapterBase):
         self.assertTrue(oldest_target.is_file())
         self.assertTrue(oldest_store.is_file())
         self.manifest_file.write_text(json.dumps([dict(self.manifest()[0], previousStoreSha256="0" * 64)] + self.manifest()[1:], indent=2, ensure_ascii=False) + "\n")
+        before_target = self.target_hash()
         route = self.create_route(name="Final")
         with self.assertRaises(HTTPException) as ctx:
             claude_adapter.claude_route_apply(route["id"], claude_adapter.RouteApplyBody(
                 expectedRevision=claude_adapter._target_revision(self.profile_root),
                 expectedRoutesRevision=claude_adapter.claude_routes()["routesRevision"]))
-        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("safely pruned", ctx.exception.detail)
+        self.assertEqual(self.target_hash(), before_target, "target must survive a failed prune untouched")
         self.assertTrue(oldest_target.is_file(), "first backup must be unstaged")
         self.assertTrue(oldest_store.is_file(), "second backup untouched")
+        self.assertFalse([p for p in self.routes_file.parent.glob(".bdf-prune-*.tmp")])
+
+    def test_prune_missing_oldest_backup_file_reports_prune_failure_and_rolls_back(self):
+        """Catches a stale manifest record (backup file deleted out-of-band) surfacing
+        as an opaque 500 instead of its real prune failure."""
+        route = self.create_route()
+        for i in range(claude_adapter.MANIFEST_CAP):
+            route = self.create_route(name=f"Route{i}")
+            claude_adapter.claude_route_apply(route["id"], claude_adapter.RouteApplyBody(
+                expectedRevision=claude_adapter._target_revision(self.profile_root),
+                expectedRoutesRevision=claude_adapter.claude_routes()["routesRevision"]))
+        oldest = self.manifest()[0]
+        oldest_target = self.profile_root / ".claude" / "backup" / oldest["backupName"]
+        before_target = self.target_hash()
+        oldest_target.unlink()  # exactly the observed real-world drift
+        route = self.create_route(name="Final")
+        with self.assertRaises(HTTPException) as ctx:
+            claude_adapter.claude_route_apply(route["id"], claude_adapter.RouteApplyBody(
+                expectedRevision=claude_adapter._target_revision(self.profile_root),
+                expectedRoutesRevision=claude_adapter.claude_routes()["routesRevision"]))
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("safely pruned", ctx.exception.detail)
+        self.assertEqual(self.target_hash(), before_target, "rollback must leave the target byte-equal")
         self.assertFalse([p for p in self.routes_file.parent.glob(".bdf-prune-*.tmp")])
 
     def test_prune_staging_destination_never_overwrites_preexisting(self):

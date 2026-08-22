@@ -39,7 +39,7 @@ Current
 Migration Required
 
 ```
-No
+No (existing profiles were backfilled with lsp.json enabled:false on disk; new scaffolds seed it)
 ```
 
 ---
@@ -47,7 +47,7 @@ No
 Testing
 
 ```
-kilo harness 31/31, opencode harness 31/31, -WhatIf green; 79 app unit tests, 75 frontend contract tests
+Gate 2 65/65, Gate 3 OVERALL PASS (Claude untouched); opencode harness 40/40, kilo harness 37/37; full Python 217 (2 accepted preference baselines); full frontend 133 (1 accepted onboarding-copy baseline); git diff --check 0; live toggle ON->build->lsp:true, OFF->build->lsp:false on both agents, all snapshot files restored byte-equal; Gate 5B corrected live validation PASS 2026-08-17 (apply + /status + routing marker + byte-verified restore + relock verified)
 ```
 
 ---
@@ -55,7 +55,7 @@ kilo harness 31/31, opencode harness 31/31, -WhatIf green; 79 app unit tests, 75
 Known Issues
 
 ```
-None
+Accepted unrelated baselines unchanged (2 preference, 1 onboarding-copy). Gate 5B corrected live validation PASSED 2026-08-17 (sessions 46 + 48): transaction mechanics + routing evidence (fixed marker GATE5B_ROUTE_OK returned, applied model verified from structured metadata) - see planning/claude-code/CLAUDE_CODE_GATE_5B_CORRECTED_LIVE_VALIDATION_PASS_REPORT.md; Gate 5C documentation/release sync completed (planning/claude-code/CLAUDE_CODE_GATE_5C_DOCUMENTATION_RELEASE_SYNC_REPORT.md). Claude adapter lifecycle is now Live validated; the real-target lock is OPEN (owner decision, session 48) so apply/restore work from the UI. Model-roles feature added (opus/sonnet/haiku/fable + picker allowlist) with two fixes (credential reload after server restart, dangling-comma on trailing-run removals) - see planning/designs/2026-08-17-claude-model-roles-design.md.
 ```
 
 ---

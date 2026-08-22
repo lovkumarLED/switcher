@@ -1,2 +1,8 @@
 # MCP test artifacts (playwright browser session dumps)
 .playwright-mcp/
+
+# Generated implementation artifacts (never commit)
+.playwright-cli/
+output/
+.superpowers/
+superpowers/

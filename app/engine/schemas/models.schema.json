@@ -1,4 +1,4 @@
-﻿{
+{
     "$schema": "https://json-schema.org/draft-07/schema#",
     "title": "Model Definitions",
     "description": "Validates models.json AND <provider>-models.json (profile-level provider model files). Model ids are arbitrary keys; each entry must carry a 'name'. 'variants' is a map of named reasoning overlays: each value is a settings object whose keys follow the provider's reasoning format - reasoningEffort (opencode / openai), thinking.type + thinking.budgetTokens (claude), or thinkingConfig.thinkingBudget (gemini).",

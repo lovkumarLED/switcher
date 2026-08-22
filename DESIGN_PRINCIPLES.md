@@ -36,7 +36,8 @@ No component should perform the responsibility of another.
 
 Configuration belongs inside JSON files.
 
-Implementation belongs inside PowerShell.
+Implementation spans the PowerShell engine/builders AND the Python FastAPI
+app + vanilla JS frontend; follow each layer's conventions.
 
 The builder should never contain provider-specific configuration.
 
@@ -67,10 +68,10 @@ If a generated file is deleted, it should be recreated by the builder.
 
 Generated files must never be modified manually.
 
-Current generated file:
+Generated artifacts:
 
 ```
-opencode.json
+opencode.json (V2.7) / kilo.json (K1) + provenance sidecars
 ```
 
 If changes are required:
@@ -129,13 +130,15 @@ The developer should edit source files, not generated files.
 
 Every major responsibility belongs in its own module.
 
-Current modules include:
+Current top-level layout:
 
-- providers/
-- profiles/
-- scripts/
-- docs/
-- backup/
+- app/                     self-contained Switcher app + bundled engine
+- adapters/                unique-adapter docs
+- bdf/                     framework docs + templates
+- planning/
+- AI/
+- root guides              README.md, ADAPTER.md, ...
+- release_registry.json
 
 Future functionality should be introduced by adding modules rather than modifying existing ones.
 

@@ -60,9 +60,9 @@ LSP support (OpenCode + KiloCode) in the engine and Switcher app
 <!-- AUTO-GENERATED START -->
 | Version | Status | Description |
 |----------|--------|-------------|
-| 2.5.3 | Current | LSP support for OpenCode + KiloCode in BOTH the BDF engine and the Switcher app: new `profiles/<profile>/lsp.json` (`{ "lsp": <bool|object>, "enabled": <bool> }`) seeded by the scaffold in every profile (disabled by default, user-owned after), both builders (OpenCode V2.7 + Kilo K1) merge LSP with an interactive toggle + `-NonInteractive`, `lsp.schema.json` pre-flight, app `GET/PUT /api/lsp` + Integrations LSP block between Plugins and MCP. Claude Code untouched. Harnesses opencode 40/40, kilo 37/37 (5 new LSP tests each); full Python 217 (2 accepted baselines), full frontend 133 (1 accepted onboarding-copy baseline). |
-| 2.5.2 | Previous | Full-system health check + security hardening + per-model reasoning formats + profile switcher. Security fixes: SSRF-via-redirect in /api/test, proxy userinfo-injection path regex, profile-switch path traversal, scaffold agent-name validation, storage.py lock deadlock. Builders preserve per-model reasoning formats. Settings gains a per-model reasoning panel, delete-model button, and active-profile switcher. Model adds overwrite by ID. 79 app unit tests, 75 frontend contract tests, kilo 31/31 + opencode 31/31 harnesses green. |
-| 2.5.1 | Previous | Real-provider compatibility: the app and the builders now write the API key in both places agents read it (provider.<id>.apiKey for OpenCode, provider.<id>.options.apiKey for Kilo), fixing the TokenRouter 401 in Kilo. The Switcher gains real-provider presets (TokenRouter, Modal, OpenAI, Google Gemini, OpenRouter, NVIDIA NIM) with SDK auto-fill. Builders mirror the dual key automatically at merge time, so builder-only users get the same result as app users. 56 app unit tests, kilo harness 31/31, opencode harness 33/33. |
+| 2.5.3 | Current | LSP support for OpenCode + KiloCode in BOTH the BDF engine and the Switcher app (Claude Code untouched). New profiles/<profile>/lsp.json source { "lsp": <bool or object>, "enabled": <bool> } seeded by the scaffold in EVERY profile (coding + experimental + minimal, disabled by default, user-owned after creation - Seed-IfMissing, never overwritten). Both builders (OpenCode V2.7 + Kilo K1) merge LSP: interactive "LSP servers: [1] enabled [2] disabled (Enter keeps current)" prompt (skipped under -NonInteractive, stored enabled used), backup-first persist, -WhatIf never writes, verification throws if an enabled LSP is missing from the output, diff summary adds/removes "LSP servers", Doctor reports it via the generic sources walk. New lsp.schema.json (Draft-07) pre-flight dependency. App: GET/PUT /api/lsp router + Integrations page LSP block between Plugins and MCP (on/off toggle persisted via PUT, server-name chips, "Edit JSON" expert dialog). Toggle OFF emits "lsp": false in the generated config (was: key removed). Harnesses: opencode 40/40, kilo 37/37 (5 new LSP tests each); full Python 217 (2 accepted preference baselines), full frontend 133 (1 accepted onboarding-copy baseline). |
+| 2.5.2 | Previous | Full-system health check + security hardening + per-model reasoning formats + profile switcher. The Switcher app was tested end-to-end on a temp clone agent (onboarding, overview, providers wizard, activity tracking with 49 real proxy calls, integrations, settings, builders). Security review found and fixed 6 issues: SSRF-via-redirect in /api/test, SSRF userinfo injection in the proxy path, profile-switch path traversal, unvalidated agent name reaching the scaffold script, a storage.py lock deadlock, and a wrong agent-label display. Builders now preserve per-model reasoning formats (the reasoning-format filter accepts levels valid in ANY format, so gemini models keep thinkingConfig inside an opencode provider). The app supports per-model reasoning format on save, model overwrite-by-ID, model deletion, and an active-profile switcher persisted in state.json. 79 app unit tests, 75 frontend contract tests, kilo + opencode harnesses all green. The project is now MIT licensed (LICENSE file + README section). |
+| 2.5.1 | Previous | Real-provider compatibility: the app and the builders now write the API key in both places agents read it (provider.<id>.apiKey for OpenCode, provider.<id>.options.apiKey for Kilo), fixing the TokenRouter 401 in Kilo. The Switcher gains real-provider presets (TokenRouter, Modal, OpenAI, Google Gemini, OpenRouter, NVIDIA NIM) with SDK auto-fill. Builders mirror the dual key automatically at merge time, so builder-only users get the same result as app users. Reasoning formats: per-provider reasoning levels (opencode / openai / claude / gemini / none) with correct variant JSON per format (reasoningEffort, thinking.budgetTokens, thinkingConfig.thinkingBudget); interactive builder runs ask the developer, persist the choice backup-first, and filter invalid levels from the generated config. 56 app unit tests, kilo harness 31/31, opencode harness 33/33. |
 | 2.5.0 | Previous | Builder V2.7 JSON Schema Validation: config sources validated against schemas/*.schema.json before builder validation (F1), pre-flight dependency check (F2), -WhatIf dry run (F3), backup retention (F4), provenance sidecar (F5), -Doctor diagnostics (F6), merge diff summary (F7), 9-stage pipeline. P2 dynamic target artifact (profiles/<profile>/target.json) + P1 env-key policy. |
 | 2.4.0 | Previous | Builder V2.5 Active-Provider Selector: discovers all providers, interactive active-provider selection persisted to settings.json, profile-level <provider>-models.json with highest precedence. |
 | 2.3.0 | Previous | BDF V2.5 framework generalization: generalized the framework for reuse across OpenCode, Claude Code, and KiloCode targets. |
@@ -103,34 +103,23 @@ docs/
 │   ├── SESSION_LOG.md
 │   ├── SESSION_WORKFLOW.md
 │   └── JOURNEY_TO_V3.md
-├── AI/
-│   ├── BUILD_BLUEPRINT_FRAMEWORK.md
-│   ├── BUILD_BUILDER_V2.1.md
-│   ├── BUILD_BUILDER_V2.5.md
-│   ├── BUILD_BUILDER_V2.5_SELECTOR.md
-│   ├── BUILD_BUILDER_V2.7_JSON_SCHEMA_VALIDATION.md
-│   ├── BUILD_KILOCODE_V1.md
-│   ├── BUILD_RELEASE_MANAGER.md
-│   ├── CONTINUE_BUILDER_V2.7_ISSUES_PATCH.md
-│   ├── CONTINUE_BUILDER_V2.7_TASK9.md
-│   ├── CONTINUE_FULL_SYSTEM_CHECK_SESSION_26.md
-│   ├── CONTINUE_KILO_BUILD_STEP2.md
-│   ├── CONTINUE_KILO_BUILD_STEP3.md
-│   ├── CONTINUE_PROJECT_BUILD.md
-│   ├── CONTINUE_RELEASE_MANAGER.md
-│   ├── CONTINUE_V3_UNIVERSAL_FRAMEWORK.md
-│   ├── CONTINUE_V3_UNIVERSAL_FRAMEWORK_v2.md
-│   ├── DISTRIBUTE_SUBAGENTS.md
-│   ├── FULL_SYSTEM_CHECK.md
-│   ├── PLAN_RELEASE_MANAGER.md
-│   ├── START_TASK.md
-│   └── UPGRADE_BLUEPRINT_FRAMEWORK.md
+├── AI/                      (AI task documents, grouped by theme)
+│   ├── builder/             (BUILD_* implementation docs, builder continuations)
+│   ├── claude-code/         (Claude gate session resume prompts)
+│   ├── deepseek/            (DeepSeek gate-4 implementation records)
+│   ├── full-system-check/   (system check runbooks, reports, FSC2 evidence)
+│   └── plan/                (implementation plans)
 ├── planning/
 │   ├── BDF_ROAD_TO_V3.md
 │   ├── DECISIONS.md
 │   ├── FUTURE_IDEAS.md
 │   ├── NEXT_PHASE_IMPLEMENTATION_PLAN.md
-│   └── VERSION_STRATEGY.md
+│   ├── SOL_ORCHESTRATION_POLICY.md
+│   ├── UNIQUE_AGENT_ADAPTER_DOCUMENTATION_DESIGN.md
+│   ├── VERSION_STRATEGY.md
+│   ├── claude-code/         (adapter evidence chain: gates 1-5)
+│   ├── designs/             (durable design records, ex-superpowers/specs)
+│   └── pi/                  (Pi-agent planning)
 ├── bdf/
 │   ├── AI_WORKFLOW.md
 │   ├── BLUEPRINT_ENGINE.md
@@ -573,8 +562,8 @@ At session end:
 ## Build Continuation
 
 Large version builds that exceed the context budget stop at a clean checkpoint, write
-`AI/CONTINUE_BUILD_<VERSION>_<STEP>.md`, and resume from it in the next session.
-Rule: `AI/CONTINUE_PROJECT_BUILD.md`.
+`AI/builder/CONTINUE_BUILD_<VERSION>_<STEP>.md`, and resume from it in the next session.
+Rule: `AI/builder/CONTINUE_PROJECT_BUILD.md`.
 
 ## Project State
 
@@ -626,8 +615,8 @@ The registry is the sequence authority.
 | `_agent/SESSION_LOG.md` | Session history |
 | `_agent/JOURNEY_TO_V3.md` | Live tracker of progress toward BDF V3 |
 | `planning/` | Long-term planning: BDF_ROAD_TO_V3, VERSION_STRATEGY, FUTURE_IDEAS, DECISIONS |
-| `AI/CONTINUE_PROJECT_BUILD.md` | Build checkpoint + resume rule for large versions |
-| `AI/` | AI task documents |
+| `AI/builder/CONTINUE_PROJECT_BUILD.md` | Build checkpoint + resume rule for large versions |
+| `AI/` | AI task documents (builder/, claude-code/, deepseek/, full-system-check/, plan/) |
 | `bdf/` | Reusable Builder Development Framework |
 
 ---
@@ -766,9 +755,12 @@ Planned features are documented only in `ROADMAP.md`.
 
 The Switcher app additionally contains a narrow Claude Code routing adapter
 (one scalar route at a time) implemented under `app/engine/claude-code/` and
-documented under `adapters/claude-code/`. Lifecycle status: **Integrated, not
-live validated** - not supported for normal use. Live validation (Gate 5)
-remains unauthorized. Runtime state is Git-ignored under `app/state/`.
+documented under `adapters/claude-code/`. Lifecycle status: **Integrated and
+live validated** (Gate 5B corrected live validation PASS 2026-08-17 - sessions
+46 + 48; apply, /status evidence, routing marker, byte-verified restore, and
+re-lock all verified). The real-target lock is OPEN by owner decision (session
+48), so apply/restore work from the UI. Runtime state is Git-ignored under
+`app/state/`.
 # 12. Known Limitations
 
 - One active profile at build time.
@@ -783,10 +775,11 @@ These limitations simplify development and provide a stable foundation for futur
 
 # 13. Next Planned Work
 
-- Gate 5 live validation of the Claude Code unique adapter (unauthorized
-  until a dedicated human-approved handoff).
-- Triaging the three established baseline test failures (two preference
-  tests, one onboarding-copy frontend test).
+- Gate 5 live validation of the Claude Code unique adapter: **COMPLETE**
+  (corrected Gate 5B PASS 2026-08-17 + Gate 5C documentation/release sync).
+- Baseline test failures: **RESOLVED 2026-08-22** (full-system check V2 fixed
+  the two preference tests and the onboarding-copy contract; zero accepted
+  baselines remain).
 - Phase 15 continues: additional coding agents remain unverified. **Pi is the
   next agent planned** (recorded 2026-08-17): after the Claude Code adapter
   program (Gates 5B/5C, model roles, DPAPI credential store) ships, Pi is

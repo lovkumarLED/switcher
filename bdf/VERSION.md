@@ -37,7 +37,7 @@ Active
 | Framework Version | 2.3.0 |
 | Supported Builder Versions | V2.7, V2.5, V2.3, V2.1 |
 | Compatible Projects | OpenCode Configuration Manager documentation, KiloCode V1 adapter, V3 universal scaffold, unique agent adapters |
-| Last Updated | 2026-08-14 |
+| Last Updated | 2026-08-17 |
 | Breaking Changes | None |
 | Migration Required | No |
 

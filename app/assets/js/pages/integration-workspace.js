@@ -32,7 +32,7 @@ function lspRows(lsp, configName) {
 }
 
 export function lspCard(lsp, configName) {
-  return `<article class="card integration-card integration-lsp"><div class="integration-card-head"><div><h2>LSP servers</h2><p>Controls whether language servers are included when building your agent config.</p></div><button id="editLspJson" class="button integration-outline-button" type="button">Edit JSON</button></div><div class="integration-lsp-toggle"><span class="integration-toggle-label">Include LSP when building</span><label class="integration-toggle"><input id="lspToggle" type="checkbox" ${lsp.enabled ? "checked" : ""}><span class="integration-toggle-track"></span></label></div>${lspRows(lsp, configName)}</article>`;
+  return `<article class="card integration-card integration-lsp control-room-card control-room-card--settings"><div class="integration-card-head"><div><h2>LSP servers</h2></div><button id="editLspJson" class="button integration-outline-button" type="button">Edit JSON</button></div><div class="integration-lsp-toggle"><span class="integration-toggle-label">Include LSP when building</span><label class="integration-toggle"><input id="lspToggle" type="checkbox" ${lsp.enabled ? "checked" : ""}><span class="integration-toggle-track"></span></label></div>${lspRows(lsp, configName)}</article>`;
 }
 
 function providerRows(providers) {
@@ -48,18 +48,18 @@ function providerRows(providers) {
 export function integrationWorkspaceMarkup({ plugins, mcps, lsp, providers, agentName, configName }) {
   const providerList = providers || [];
   return `<section class="integration-workspace">
-    <header class="integration-header"><div><h1 class="page-title">Integrations</h1><p>Add tools and extensions to ${escapeHtml(agentName)}.</p></div><span class="integration-managing">Managing: <strong>${escapeHtml(agentName)}</strong></span></header>
-    <div class="integration-notice">${icon.info}<span>Changes are backed up before they are saved. Build your config to apply them to your agent.</span></div>
+    <header class="integration-header"><div><h1 class="page-title">Integrations</h1></div><span class="integration-managing">Managing: <strong>${escapeHtml(agentName)}</strong></span></header>
+    <div class="integration-notice control-room-card control-room-card--settings">${icon.info}<span>Changes are backed up before they are saved. Build your config to apply them to your agent.</span></div>
     <div class="integration-columns">
       <div class="integration-column integration-column--main">
-        <article class="card integration-card integration-plugins"><div class="integration-card-head"><div><h2>Plugins</h2><p>Extensions your agent loads from its coding profile.</p></div><button id="addPlugin" class="button integration-outline-button" type="button">${icon.plus}Add plugin</button></div>${pluginRows(plugins)}</article>
+        <article class="card integration-card integration-plugins control-room-card control-room-card--plugins"><div class="integration-card-head"><div><h2>Plugins</h2></div><button id="addPlugin" class="button integration-outline-button" type="button">${icon.plus}Add plugin</button></div>${pluginRows(plugins)}</article>
         ${lspCard(lsp, configName)}
-        <article class="card integration-card integration-mcp"><div class="integration-card-head"><div><h2>MCP servers</h2><p>Tools your agent can use through Model Context Protocol.</p></div><button id="addMcp" class="button integration-outline-button" type="button">${icon.plus}Add MCP server</button></div>${mcpRows(mcps)}</article>
+        <article class="card integration-card integration-mcp control-room-card control-room-card--mcp"><div class="integration-card-head"><div><h2>MCP servers</h2></div><button id="addMcp" class="button integration-outline-button" type="button">${icon.plus}Add MCP server</button></div>${mcpRows(mcps)}</article>
       </div>
       <div class="integration-column integration-column--side">
-        <article class="card integration-card integration-provider"><h2>AI provider connection</h2><p class="integration-label">Active providers</p>${providerRows(providerList)}<p>Your tools send requests to the first active provider.</p><div class="integration-actions"><button class="button integration-outline-button" type="button" data-route="providers">Manage providers</button></div></article>
-        <article class="card integration-card integration-endpoint"><h2>Use Switcher with another tool</h2><p>Point an OpenAI-compatible tool here to use your primary provider.</p><div class="integration-copy-field"><code>http://127.0.0.1:9090/v1</code><button id="copyEndpoint" class="integration-icon-button" type="button" aria-label="Copy local endpoint">${icon.copy}</button></div><span class="integration-local-pill">Local only</span></article>
-        <article class="integration-build-card"><span class="integration-build-icon">${icon.wrench}</span><div><strong>Build required</strong><p>Rebuild your configuration to apply changes to your agent.</p></div><button id="buildConfig" class="button button--primary" type="button">Build my config</button><p id="buildMessage" class="integration-build-message" role="status"></p></article>
+        <article class="card integration-card integration-provider control-room-card control-room-card--health"><h2>AI provider connection</h2>${providerRows(providerList)}<div class="integration-actions"><button class="button integration-outline-button" type="button" data-route="providers">Manage providers</button></div></article>
+        <article class="card integration-card integration-endpoint control-room-card control-room-card--settings"><h2>Use Switcher with another tool</h2><div class="integration-copy-field"><code>http://127.0.0.1:9090/v1</code><button id="copyEndpoint" class="integration-icon-button" type="button" aria-label="Copy local endpoint">${icon.copy}</button></div><span class="integration-local-pill">Local only</span></article>
+        <article class="integration-build-card control-room-card control-room-card--build"><span class="integration-build-icon">${icon.wrench}</span><div><strong>Build required</strong><p>Rebuild your configuration to apply changes to your agent.</p></div><button id="buildConfig" class="button button--primary" type="button">Build my config</button><p id="buildMessage" class="integration-build-message" role="status"></p></article>
       </div>
     </div>
   </section>`;

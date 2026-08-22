@@ -98,7 +98,7 @@ If a version build is too large to finish within 70-80% of the 200,000-token con
 window, the agent must NOT push through. Instead:
 
 1. Stop at a clean checkpoint.
-2. Write `AI/CONTINUE_BUILD_<VERSION>_<STEP>.md` with what was done, what is next,
+2. Write `AI/builder/CONTINUE_BUILD_<VERSION>_<STEP>.md` with what was done, what is next,
    how to verify, and the resume prompt.
 3. Update `_agent/SESSION_LOG.md` and `_agent/JOURNEY_TO_V3.md`.
 4. Hand the user the resume prompt for the next session.
@@ -106,7 +106,7 @@ window, the agent must NOT push through. Instead:
 The full rule and the resume prompt template are in:
 
 ```
-AI/CONTINUE_PROJECT_BUILD.md
+AI/builder/CONTINUE_PROJECT_BUILD.md
 ```
 
 Resume from the latest checkpoint file — never restart a version from scratch.
@@ -310,7 +310,7 @@ Whenever implementation changes:
 - Keep documents consistent with one another.
 - Regenerate `PROJECT_STATE.md` after every major refactor.
 
-## README Synchronization Rule
+## README Synchronization Rule (public README network)
 
 **`README.md` is the public face of the project. It must never go stale.**
 
@@ -331,6 +331,45 @@ Whenever something is added, changed, or fixed:
 This rule applies to every README that describes a changed area:
 `README.md`, `bdf/README.md`, and `bdf/templates/README.md` (placeholder
 examples must stay current).
+
+## Opt-In Public README Network Sync
+
+The public-facing README files that an internet visitor can reach on GitHub
+form a connected documentation network: the root `README.md`, `app/README.md`,
+`bdf/README.md`, `adapters/claude-code/README.md`, and any future public
+component or adapter `README.md` linked from them.
+
+When the maintainer explicitly says a feature was added or behavior changed
+**and asks to "update the README files" / "update the public GitHub
+documentation"**, that single request authorizes the agent to:
+
+1. discover every public-facing `README.md` affected by the change — always
+   including an impact check of the root `README.md`;
+2. update all affected public READMEs together, without requiring the
+   maintainer to name each file;
+3. keep shared facts, commands, compatibility information, capability tables,
+   links, screenshots, and GIFs consistent across the network;
+4. preserve each README's responsibility: the root README summarizes the
+   product; component READMEs own their depth;
+5. add a new public component README to the network when GitHub visitors need
+   it;
+6. verify the connected set (links, media paths, case sensitivity) and report
+   which files changed and why.
+
+This contract is **opt-in only**. A normal code or feature request does not by
+itself authorize public README updates — it activates only when the maintainer
+explicitly asks for the README files or public documentation to be updated.
+Internal AI plans, session logs, implementation specifications, test reports,
+private working notes, and unrelated Markdown files are NOT part of this
+network and must not be swept into such updates.
+
+## Generated Artifacts Rule
+
+Never commit Playwright session output or Superpowers working artifacts
+(`.playwright-cli/`, `.playwright-mcp/`, `output/`, `.superpowers/`, or
+`superpowers/`). They are generated implementation evidence, not application
+dependencies. Keep only curated public media in `app/assets/demos/`, and move
+durable design decisions into `planning/designs/` before committing.
 
 ---
 

@@ -39,7 +39,7 @@ app/engine/schemas/
 
 Those paths are evidence-build locations, not an approved silent replacement for
 the canonical source model in
-`planning/CLAUDE_CODE_BDF_ADAPTATION_RESEARCH_PLAN.md`. That plan proposes final
+`planning/claude-code/CLAUDE_CODE_BDF_ADAPTATION_RESEARCH_PLAN.md`. That plan proposes final
 canonical project sources at `providers/claude-code.json`,
 `profiles/<profile>/claude-settings.json`, `schemas/claude-code-routing.schema.json`,
 `scripts/build-claude-code.ps1`, and `scripts/test-claude-code.ps1`. Section 2.6
@@ -50,7 +50,7 @@ implementation, or change any public support statement. Gate 3 is not authorized
 this design file alone. Current public support remains unchanged.
 
 For Claude-specific gates, managed scope, safety, and implementation criteria,
-`planning/CLAUDE_CODE_BDF_ADAPTATION_RESEARCH_PLAN.md` is the governing authority.
+`planning/claude-code/CLAUDE_CODE_BDF_ADAPTATION_RESEARCH_PLAN.md` is the governing authority.
 This document governs documentation architecture only. If the two documents appear
 to conflict, implementation stops until a handoff follows the research plan or an
 explicit approved amendment changes it.
@@ -257,7 +257,7 @@ Truth is resolved by subject, not by treating one document as universally domina
 |---|---|
 | Human authorization and scope | User approval, current Sol handoff, current gate decision |
 | Architectural decisions | `planning/DECISIONS.md`, then this approved design and later approved designs |
-| Claude gate criteria and safety | `planning/CLAUDE_CODE_BDF_ADAPTATION_RESEARCH_PLAN.md`, then an approved gate handoff consistent with it or an explicit approved amendment |
+| Claude gate criteria and safety | `planning/claude-code/CLAUDE_CODE_BDF_ADAPTATION_RESEARCH_PLAN.md`, then an approved gate handoff consistent with it or an explicit approved amendment |
 | Current public support | `README.md`, `PROJECT_STATE.md`, `ROADMAP.md`, and release records, kept synchronized |
 | Generic adapter contracts | `bdf/` framework documents and `bdf/templates/` |
 | One unique agent's durable contract | `adapters/<agent>/ADAPTER.md` |
@@ -389,7 +389,7 @@ starts a gateway, probes a provider, invokes Claude Code, edits Claude settings,
 authorizes Gate 3.
 
 At the time of this revision,
-`planning/CLAUDE_CODE_GATE_2_FIXTURE_BUILDER_REPORT.md` is not present in this
+`planning/claude-code/CLAUDE_CODE_GATE_2_FIXTURE_BUILDER_REPORT.md` is not present in this
 worktree. It is reported to live in an isolated worktree and is not integrated here.
 Therefore this design does not assign `Fixture Validated` status, does not claim Gate
 2 passed for the current worktree, and does not provide the evidence prerequisite for

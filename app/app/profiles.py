@@ -21,6 +21,12 @@ def list_profiles(agent_dir):
     )
 
 
+def _ensure_profile_scope(agent_dir, profile):
+    """Mark non-legacy profiles as provider-isolated for the external builders."""
+    if profile not in ("coding", "default"):
+        (agent_dir / "profiles" / profile / "providers").mkdir(parents=True, exist_ok=True)
+
+
 def active_profile():
     state = get_state()
     profile = state.get("activeProfile")
@@ -32,9 +38,11 @@ def active_profile():
 @router.get("/profiles")
 def read_profiles():
     agent_dir = agentstore.require_agent_dir()
+    current = agentstore.active_profile(agent_dir)
+    _ensure_profile_scope(agent_dir, current)
     return {
         "profiles": list_profiles(agent_dir),
-        "active": active_profile(),
+        "active": current,
     }
 
 
@@ -46,5 +54,6 @@ def switch_profile(body: dict):
     agent_dir = agentstore.require_agent_dir()
     if profile not in list_profiles(agent_dir):
         raise HTTPException(404, f"Profile '{profile}' doesn't exist.")
+    _ensure_profile_scope(agent_dir, profile)
     set_state(activeProfile=profile)
     return {"ok": True, "active": profile, "profiles": list_profiles(agent_dir)}

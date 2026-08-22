@@ -1,7 +1,8 @@
 import { api, optional } from "../core/api.js";
 import { store } from "../core/store.js";
-import { confirmAction, escapeHtml, notify, openDialog } from "../core/dialog.js";
+import { confirmAction, detailSection, detailStatus, detailSummaryItem, detailView, escapeHtml, notify, openDialog } from "../core/dialog.js";
 import { isClaude } from "../core/capabilities.js";
+import { providerLogoMark } from "../core/provider-logo.js";
 import { renderProviderWorkspace } from "./provider-workspace.js";
 import { renderClaudeRoutes } from "./claude-routes.js";
 
@@ -67,7 +68,17 @@ function card(provider) {
 }
 
 function details(provider, trigger) {
-  openDialog({ title: provider.name, trigger, content: `<dl class="stack"><div><dt class="eyebrow">Endpoint</dt><dd class="mono">${escapeHtml(provider.baseUrl)}</dd></div><div><dt class="eyebrow">SDK package</dt><dd class="mono">${escapeHtml(provider.npm || "@ai-sdk/openai-compatible")}</dd></div><div><dt class="eyebrow">Reasoning format</dt><dd>${escapeHtml(provider.reasoningFormat || "opencode")}</dd></div><div><dt class="eyebrow">API key</dt><dd>${provider.hasKey ? "Stored locally (hidden)" : "Not configured"}</dd></div><div><dt class="eyebrow">Models</dt><dd>${provider.models?.length ? `<ul>${provider.models.map(model => `<li><span class="mono">${escapeHtml(model.model)}</span>${model.name ? ` — ${escapeHtml(model.name)}` : ""}</li>`).join("")}</ul>` : "No models configured"}</dd></div></dl>`, actions: `<button class="button button--quiet" type="button" data-dialog-close>Close</button>` });
+  const state = providerState(provider, store.get().activeProvider);
+  const test = store.get().providerTests[provider.id];
+  const statusLabel = state === "primary" ? "Active" : state === "included" ? "Included" : test === "ok" ? "Test passed" : test === "fail" ? "Test failed" : "Available";
+  const statusTone = state === "primary" || test === "ok" ? "active" : test === "fail" ? "error" : state === "included" ? "ok" : "neutral";
+  const modelCount = provider.models?.length || 0;
+  const modelRows = modelCount
+    ? `<ul class="detail-model-list">${provider.models.map(model => `<li class="detail-model-row"><span class="mono">${escapeHtml(model.model)}</span>${model.name ? `<span class="detail-model-row__name">${escapeHtml(model.name)}</span>` : ""}</li>`).join("")}</ul>`
+    : '<p class="detail-empty">No models configured yet.</p>';
+  const connection = detailSection("Connection", `<dl class="detail-grid"><div class="detail-field detail-field--wide"><dt>Endpoint</dt><dd class="mono">${escapeHtml(provider.baseUrl || "—")}</dd></div><div class="detail-field"><dt>SDK package</dt><dd class="mono">${escapeHtml(provider.npm || "@ai-sdk/openai-compatible")}</dd></div><div class="detail-field"><dt>Reasoning format</dt><dd>${escapeHtml(provider.reasoningFormat || "opencode")}</dd></div><div class="detail-field"><dt>API key</dt><dd>${provider.hasKey ? "Stored locally (hidden)" : "Not configured"}</dd></div></dl>`);
+  const models = detailSection("Models", modelRows, "detail-section--models");
+  openDialog({ title: provider.name, eyebrow: "Provider details", variant: "details", headerMark: providerLogoMark(provider.name, { id: provider.id, size: "md" }), headerMeta: detailStatus(statusLabel, statusTone), trigger, content: detailView({ summary: `${detailSummaryItem("Status", statusLabel, statusTone)}${detailSummaryItem("Models", modelCount ? `${modelCount} configured` : "None", modelCount ? "active" : "muted")}${detailSummaryItem("Auth", provider.hasKey ? "Key stored" : "Not configured", provider.hasKey ? "active" : "muted")}`, sections: `${connection}${models}` }), actions: `<button class="button button--quiet" type="button" data-dialog-close>Close</button>` });
 }
 
 function providerForm(provider) {
@@ -147,7 +158,16 @@ async function renderProvidersLegacy(workspace) {
 
 export async function renderProviders(workspace) {
   if (isClaude()) {
-    await renderClaudeRoutes(workspace);
+    await renderClaudeRoutes(workspace, {
+      activeAgentId: "claude-code",
+      onAgentChange: async nextAgent => {
+        const changed = await switchProviderAgent(api, nextAgent, "claude-code");
+        if (!changed) return;
+        const displayNames = { opencode: "OpenCode", kilo: "KiloCode", "claude-code": "Claude Code" };
+        notify(`Switched workspace to ${displayNames[nextAgent] || nextAgent}.`, "success");
+        document.dispatchEvent(new CustomEvent("ai-switcher:agent-changed"));
+      },
+    });
     return;
   }
   let providers = [], status = { agent: "opencode" };

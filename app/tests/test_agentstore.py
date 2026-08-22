@@ -297,6 +297,31 @@ class AgentStoreTests(unittest.TestCase):
         self.assertEqual(agentstore.read_plugins(self.agent_dir), ["another"])
         self.assertEqual(len(list((self.agent_dir / "backup").glob("plugins_*.json"))), 1)
 
+    def test_active_profile_isolates_providers_models_plugins_and_mcp(self):
+        coding_provider = agentstore.write_provider(self.agent_dir, "coding-provider", "Coding", "http://coding/v1", "k")
+        agentstore.write_models(self.agent_dir, coding_provider["id"], [{"model": "coding/model", "name": "Coding model"}])
+        agentstore.write_plugins(self.agent_dir, ["coding-plugin"])
+        agentstore.write_mcp(self.agent_dir, "coding-mcp", {"type": "local", "command": ["coding"]})
+
+        minimal = self.agent_dir / "profiles" / "minimal"
+        minimal.mkdir(parents=True)
+        set_state(activeProfile="minimal")
+        minimal_provider = agentstore.write_provider(self.agent_dir, "minimal-provider", "Minimal", "http://minimal/v1", "k")
+        agentstore.write_models(self.agent_dir, minimal_provider["id"], [{"model": "minimal/model", "name": "Minimal model"}])
+        agentstore.write_plugins(self.agent_dir, ["minimal-plugin"])
+        agentstore.write_mcp(self.agent_dir, "minimal-mcp", {"type": "local", "command": ["minimal"]})
+
+        self.assertEqual([p["id"] for p in agentstore.list_providers(self.agent_dir)], ["minimal-provider"])
+        self.assertEqual([m["model"] for m in agentstore.read_models(self.agent_dir, "minimal-provider")], ["minimal/model"])
+        self.assertEqual(agentstore.read_plugins(self.agent_dir), ["minimal-plugin"])
+        self.assertEqual(list(agentstore.read_mcp(self.agent_dir)), ["minimal-mcp"])
+
+        set_state(activeProfile="coding")
+        self.assertEqual([p["id"] for p in agentstore.list_providers(self.agent_dir)], ["coding-provider"])
+        self.assertEqual([m["model"] for m in agentstore.read_models(self.agent_dir, "coding-provider")], ["coding/model"])
+        self.assertEqual(agentstore.read_plugins(self.agent_dir), ["coding-plugin"])
+        self.assertEqual(list(agentstore.read_mcp(self.agent_dir)), ["coding-mcp"])
+
     def test_find_builder_prefers_versioned(self):
         scripts = self.agent_dir / "scripts"
         scripts.mkdir(parents=True)
@@ -327,6 +352,23 @@ class AgentStoreTests(unittest.TestCase):
         self.assertEqual(agentstore.get_agents(), [{"name": "kilo", "dir": str(self.agent_dir)}])
         self.assertEqual(agentstore.active_agent_name(), "kilo")
         self.assertEqual(agentstore.current_agent()[0], "kilo")
+
+    def test_malformed_agent_entries_do_not_crash_status(self):
+        """Catches a hand-edited or legacy state entry crashing /api/status with a 500."""
+        set_state(
+            agents=[
+                {"name": "broken", "directory": str(self.agent_dir)},
+                {"name": ""},
+                42,
+                {"name": "good", "dir": str(self.agent_dir)},
+            ],
+            activeAgent="broken",
+        )
+        agents = agentstore.get_agents()
+        self.assertEqual([a["name"] for a in agents], ["good"])
+        name, directory = agentstore.current_agent()
+        self.assertEqual(name, "good")
+        self.assertEqual(directory, Path(str(self.agent_dir)))
 
     def test_agent_add_remove_switch(self):
         set_state(agent="kilo", dir=str(self.agent_dir))

@@ -18,6 +18,20 @@ test("settings matches the approved workspace configuration composition", () => 
   assert.match(shell, /settings-workspace\.css/);
 });
 
+test("settings plugin and MCP modules use the shared control-room cards", () => {
+  assert.match(view, /control-room-card--plugins/);
+  assert.match(view, /control-room-card--mcp/);
+  assert.match(css, /\.control-room-card--plugins/);
+  assert.match(css, /\.control-room-card--mcp/);
+});
+
+test("settings navigation and active profile use the shared control-room surfaces", () => {
+  assert.match(view, /<nav class="settings-nav control-room-card control-room-card--settings"/);
+  assert.match(view, /settings-profile-compact control-room-card control-room-card--developer/);
+  assert.match(css, /\.settings-nav\.control-room-card/);
+  assert.match(css, /\.settings-profile-compact\.control-room-card/);
+});
+
 test("settings retains real save and build behavior", () => {
   for (const action of ["settingsProvider", "settingsModel", "addModel", "settingsBuild", "retentionDays", "motionPreference"])
     assert.match(view, new RegExp(`id=["']${action}["']`));
@@ -32,11 +46,15 @@ test("the model editor keeps scrolling but hides native scrollbar chrome", () =>
 });
 
 test("active profile is a compact control beneath the settings navigation", () => {
-  assert.match(view, /<aside class="settings-rail">[\s\S]*<nav class="settings-nav"[\s\S]*<section id="settingsProfile" class="settings-profile-compact"/);
+  assert.match(view, /<aside class="settings-rail">[\s\S]*<nav class="settings-nav(?: [^"]+)?"[\s\S]*<section id="settingsProfile" class="settings-profile-compact(?: [^"]+)?"/);
   assert.doesNotMatch(view, /navItem\("settingsProfile",\s*"Profile"/);
   assert.match(view, /navItem\("modelsReasoning",\s*"Models",\s*"cube",\s*true\)/);
   assert.match(css, /\.settings-profile-compact\s*\{[^}]*padding:\s*14px/is);
   assert.match(css, /\.settings-profile-current\s*\{[^}]*display:\s*flex/is);
+});
+
+test("active profile menu is not clipped by its control-room card", () => {
+  assert.match(css, /\.settings-profile-compact\.control-room-card\s*\{[^}]*overflow:\s*visible/is);
 });
 
 test("model reasoning editor uses a polished card hierarchy and pill controls", () => {
@@ -62,4 +80,34 @@ test("the compact plugin card scrolls through every plugin without visible chrom
   assert.doesNotMatch(view, /plugins\.slice\(0,\s*5\)/);
   assert.match(css, /\.settings-plugins-module \.settings-list\s*\{[^}]*overflow-y:\s*auto[^}]*scrollbar-width:\s*none/is);
   assert.match(css, /\.settings-plugins-module \.settings-list::-webkit-scrollbar\s*\{[^}]*display:\s*none/is);
+});
+
+test("the compact MCP card keeps every server in an invisible bounded scroller", () => {
+  assert.match(view, /settings-list settings-mcp-list/);
+  assert.doesNotMatch(view, /entries\.slice\(0,\s*5\)/);
+  assert.match(css, /\.settings-mcps-module \.settings-mcp-list\s*\{[^}]*max-height:\s*330px[^}]*overflow-y:\s*auto[^}]*scrollbar-width:\s*none/is);
+  assert.match(css, /\.settings-mcps-module \.settings-mcp-list::-webkit-scrollbar\s*\{[^}]*display:\s*none/is);
+});
+
+test("Claude settings uses a protected configuration dashboard", () => {
+  for (const token of ["claude-settings-workspace", "claude-settings-hero", "claude-settings-summary", "claude-settings-route-card", "claude-settings-inventory-panel", "Ownership boundary"]) {
+    assert.match(page, new RegExp(token));
+  }
+  assert.match(css, /\.claude-settings-workspace/);
+  assert.match(css, /\.claude-settings-hero/);
+  assert.match(css, /\.claude-settings-inventory-panel/);
+});
+
+test("Claude inventory keeps future MCP and plugin rows in invisible scrollers", () => {
+  assert.match(page, /claude-settings-inventory-list/);
+  assert.doesNotMatch(page, /plugins\.slice\(0/);
+  assert.match(css, /\.claude-settings-inventory-list\s*\{[^}]*max-height:\s*292px[^}]*overflow-y:\s*auto[^}]*scrollbar-width:\s*none/is);
+  assert.match(css, /\.claude-settings-inventory-list::-webkit-scrollbar\s*\{[^}]*display:\s*none/is);
+});
+
+test("Claude settings and activity keep explanatory copy inside reference callouts", () => {
+  assert.match(page, /claude-settings-hero__notice/);
+  assert.doesNotMatch(page, /A calm view of the route Switcher manages/);
+  assert.doesNotMatch(page, /claude-settings-route-card__note/);
+  assert.doesNotMatch(page, /claude-inventory-note/);
 });

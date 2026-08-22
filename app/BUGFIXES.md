@@ -18,6 +18,77 @@ Copy this block into Entries when a fix lands:
 
 ## Entries
 
+### 2026-08-22 - Backup-ring guard failures were masked as an opaque "could not be applied" 500
+
+- **Symptom:** Live route apply failed with a generic 500 ("The route could not be applied.") even though the real problem was the backup ring being full with a stale manifest record whose backup file no longer existed on disk — the operator could not know the actual cause or the fix.
+- **Root cause:** `_prepare_prune` raises a deliberate HTTPException(409) when the oldest backup fails safety validation, but the apply handler's broad `except Exception` caught it, rolled back, and re-raised as an opaque 500. (The trigger itself: two Aug-17 manifest entries referenced backups deleted out-of-band during the earlier backup-folder migration.)
+- **Fix:** `claude_adapter.py` adds a dedicated `except HTTPException` branch that still rolls back but re-raises the true status/message; the stale manifest records were repaired (10 → 8, backed up first) and a regression test simulates the exact missing-file drift.
+- **Verified:** `test_prune_missing_oldest_backup_file_reports_prune_failure_and_rolls_back` + updated `test_prune_second_backup_validation_failure_restores_first` (now asserts 409 + untouched target); then a real authorized Gate cycle on this machine: apply → surgical env patch verified → /status honest → restore → settings.json byte-equal to pre-gate snapshot (`6d279fa8…`); full Python 270/270.
+
+### 2026-08-22 - Custom-named kilo agents got the wrong builder (LSP and artifact silently wrong)
+
+- **Symptom:** A KiloCode workspace registered under a custom name (e.g. "kilo-test") built a config where the LSP section collapsed to `"lsp": true` regardless of the stored value, and each build wrote/updated `opencode.json` instead of `kilo.json`.
+- **Root cause:** `scaffold-agent.ps1` chose the builder source by comparing the registered agent name to the literal string `kilo`. Any other name fell through to the OpenCode V2.7 template, whose build writes `opencode.json` by default and merges LSP differently.
+- **Fix:** `app/engine/scaffold-agent.ps1` now infers kilo-type from the presence of `kilo.json` in the config root (`$IsKiloType`), so custom names get the K1 adapter. Deployed copy at `~/.config/opencode/scripts/scaffold-agent.ps1` re-synced.
+- **Verified:** New integration tests `tests/test_scaffold_builder.py` (custom kilo name → K1 with `kilo.json`, custom opencode name → V2.7); live app cycle on a temp kilo fixture: on(object)→object, off→`"lsp": false`, re-on(true)→`true`; full Python 269/269; opencode 40/40 + kilo 37/37 harnesses.
+
+### 2026-08-22 - Onboarding approval could 500-crash and revert could never restore for custom agent names
+
+- **Symptom:** Two related first-run failures: (1) a hand-edited `state.json` entry using a wrong key made `/api/status` (and much of the app) return 500; (2) after a failed verify, auto-revert always answered "No main-config backup found" for custom-named agents, leaving the built config applied while the UI claimed the config was "left in place".
+- **Root cause:** (1) `agentstore.get_agents()` returned state entries unchecked and `current_agent()` indexed `entry["dir"]` directly. (2) `revert_setup()` globbed backups as `{registered-name}_*.json`, but backups are named after the main-config stem (`opencode_*` / `kilo_*`).
+- **Fix:** (1) `get_agents()` now filters to well-formed entries (dict with non-empty `name`+`dir`). (2) `revert_setup()` matches any timestamped backup whose derived stem has a live main file.
+- **Verified:** Regression tests in `tests/test_agentstore.py::test_malformed_agent_entries_do_not_crash_status` and `tests/test_setup_revert.py` (4 cases incl. red/green reproduction); end-to-end onboarding approval now completes on temp fixtures.
+
+### 2026-08-22 - Setup verification failed forever when an inactive provider existed
+
+- **Symptom:** Workspaces with an intentionally deactivated provider could never pass post-setup verification ("Some checks failed") even though everything buildable was healthy.
+- **Root cause:** `/api/setup/verify` compared every file in `providers/` against the generated main JSON, but builders merge only ACTIVE providers — an intentionally dormant provider always looked like a missing one.
+- **Fix:** `app/engine.py::verify_setup` now tests and verifies only providers in the active set (mirroring the build contract).
+- **Verified:** `tests/test_setup_verify.py` (inactive provider does not block verification; missing-agent 400); live verify ok:true on both temp fixtures.
+
+### 2026-08-22 - Provider usage legend overlapped percentages on narrow overview columns
+
+- **Symptom:** In the redesigned compact overview, the donut legend painted "100%" on top of the provider name (e.g. "orca[100%]uter").
+- **Root cause:** `.usage-row__name` was an inline-flex inside a `minmax(0,1fr)` track and could shrink below its text width without truncating, letting the next cell overlap it.
+- **Fix:** `.usage-row` count column is content-sized (`auto`) and `.usage-row__name` is a block with ellipsis truncation.
+- **Verified:** DOM measurement shows no box overlap and active ellipsis at 1512px viewport; overview visual contracts 40/40.
+
+### 2026-08-22 - Escape key leaked a crash handler from the manual-folder dialog
+
+- **Symptom:** After closing the "Choose a folder manually" dialog with Cancel or Use-this-folder, any later Escape press anywhere threw `TypeError: Cannot set properties of null` in the console.
+- **Root cause:** The dialog's document-level Escape listener removed itself only on the Escape path, so it survived non-Escape closes and later ran against a stale startup view.
+- **Fix:** `onboarding.js` keeps a single tracked handler; both open and close paths add/remove it symmetrically and guard the null node.
+- **Verified:** Live: cancel → reopen → confirm → About dialog → real Escape closes cleanly with zero console errors; frontend contracts green.
+
+### 2026-08-22 - API and proxy accepted cross-site and spoofed-Host requests (security hardening)
+
+- **Symptom:** Only the Claude routes enforced loopback Host/Origin; every other `/api/*` route (providers, lsp, preferences, agents, engine) and the `/v1/*` proxy accepted spoofed `Host:` and foreign `Origin:` headers, enabling DNS-rebinding/cross-site writes. Windows reserved device names (`con`, `aux`, …) were accepted as provider ids, and proxy paths forwarded `..` dot-segments upstream.
+- **Root cause:** `_check_origin` existed only as a per-route dependency in the Claude router; no id denylist or dot-segment rejection elsewhere.
+- **Fix:** Global `enforce_loopback_origin` middleware in `server.py` guards all `/api` + `/v1` traffic (same allowlist semantics as the Claude dependency); `agentstore` rejects reserved device names; `proxy.py` rejects any path containing a `..` segment before forwarding. Static assets remain openly readable by design.
+- **Verified:** `tests/test_origin_gate.py` (spoofed Host → 403, foreign Origin → 403, loopback → 200, reserved ids → 400 with no files written); live probes replayed against the running server: evil host 403, traversal/static probes unchanged.
+
+### 2026-08-22 - Stale test contracts lagged shipped features (preferences browser key, onboarding copy)
+
+- **Symptom:** Two long-"accepted" baseline failures: preference tests expected the old three-key default shape after the browser-preference feature landed, and the onboarding copy contract still asserted the retired claude-3.5-sonnet first-provider screen.
+- **Root cause:** Tests were not updated in the same change as the two features (violation of the same-change rule, now corrected).
+- **Fix:** `test_preferences.py` expects the four-key defaults incl. `browser` and adds invalid-browser rejection coverage; `frontend_review.test.mjs` asserts the current approved first-provider screen (LiteLLM / CLI Proxy / Custom choices).
+- **Verified:** Focused suites green; full Python 269/269 with zero skipped/xfail; full frontend 192/192 — no accepted baselines remain.
+
+### 2026-08-22 - LSP toggle refreshed the entire Integrations page
+
+
+- **Symptom:** Switching “Include LSP when building” on or off rebuilt the entire Integrations page, causing visible flicker and losing the page’s current UI position.
+- **Root cause:** The LSP change handler saved the setting and then called the page-level `renderIntegrations()` refresh instead of updating the LSP card in place.
+- **Fix:** `app/assets/js/pages/integrations.js` now replaces only the LSP card using `lspCard()`, rebinds its two controls, and keeps the rest of the Integrations workspace intact. LSP JSON saves use the same card-local update path.
+- **Verified:** Live KiloCode test toggled LSP off and on; MCP/provider sections remained present, no skeleton refresh appeared, and the final state was restored to enabled. Focused UI contracts passed 45/45.
+
+### 2026-08-20 - Provider relays showed a fake card and hid real providers
+
+- **Symptom:** The relay deck showed a blank/add-provider card, so users could see only two meaningful providers even when more were configured; the deepest layer did not move with the deck.
+- **Root cause:** The deck appended a synthetic slot and kept the back layer empty instead of treating every configured provider/Claude route as a carousel item.
+- **Fix:** Relay item lists now contain only real providers/routes. For three or more entries, the back layer is the previous real entry, and both relay views keep wheel, drag, arrow, and button navigation over the complete list. Empty-state CTAs appear only when no entries exist.
+- **Verified:** Focused relay/Claude contracts 62/62; all 24 JavaScript files pass syntax checks; four-provider reachability check passes; backend files were not changed.
+
 ### 2026-08-17 - settings.json backups were written next to settings.json instead of a backup folder
 
 - **Symptom:** Applying any Claude route wrote `settings.backup.*.json` directly inside `~/.claude/` (cluttered next to `settings.json`), and the owner could not find them in a backup folder.

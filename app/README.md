@@ -1,4 +1,7 @@
-# Switcher
+# Switcher — the app guide
+
+> This is the plain-language user guide for the Switcher desktop app.
+> New here? Start with the [main README](../README.md), then come back.
 
 A local Windows control room for people who already understand coding agents,
 models, and API keys. It lets you **switch between AI servers (providers)**,
@@ -8,6 +11,24 @@ generated JSON.
 Your AI tool (for example OpenCode, Cursor, or anything that speaks the
 "OpenAI way") points at this app once, and the app forwards everything to
 whichever provider you pick. Switching providers = one click in the app.
+
+## Demos
+
+Current walkthroughs (sanitized fixture data only) — also embedded in the
+[main README](../README.md):
+
+| Demo | What it shows |
+|---|---|
+| ![Onboarding wizard](assets/demos/shared/onboarding.gif) | First-run wizard: detect agents → read-only review → ready |
+| ![Overview dashboard](assets/demos/shared/workspace-overview.gif) | Activity KPIs, usage split, recent proxy calls |
+| ![Provider deck + build](assets/demos/opencode/provider-and-build.gif) | OpenCode: provider switching + build to success |
+| ![Integrations](assets/demos/opencode/integrations.gif) | OpenCode: plugins, MCP servers, LSP toggle |
+| ![KiloCode providers](assets/demos/kilocode/provider-and-build.gif) | KiloCode: provider deck + kilo.json build |
+| ![KiloCode integrations](assets/demos/kilocode/integrations.gif) | KiloCode: plugins, MCP, LSP |
+| ![Claude routes](assets/demos/claude-code/routes-and-credentials.gif) | Claude Code: routes, details, DPAPI credentials |
+| ![Claude inventory + activity](assets/demos/claude-code/inventory-and-activity.gif) | Claude Code: read-only inventory + route activity |
+
+The static hero image is [assets/demos/switcher-overview.png](assets/demos/switcher-overview.png).
 
 ---
 
@@ -38,8 +59,8 @@ point `BDF_SCRIPTS_DIR` at their own copy of the engine.)
 Prefer commands? From PowerShell:
 
 ```powershell
-git clone https://github.com/lovkumarLED/Builder-Development-Framework-BDF.git
-cd Builder-Development-Framework-BDF\docs\app
+git clone https://github.com/lovkumarLED/switcher.git
+cd switcher\app
 .\install.bat   # one-time: creates env\, installs packages, adds the desktop shortcut
 ```
 
@@ -69,6 +90,37 @@ internet).
   another PC and it simply creates a fresh `env` there on first launch —
   your providers, settings, and rule.md stay untouched.
 - Deleting `env` is safe: it is recreated on the next launch.
+
+## Backend modules (`app/app/`)
+
+One responsibility per module. Entry point: `server.py` (FastAPI + uvicorn,
+binds `127.0.0.1:9090` only).
+
+| Module | Responsibility |
+|--------|----------------|
+| `config.py` | paths, host/port, agent registry, app-owned runtime locations |
+| `storage.py` | `state.json` persistence (atomic writes) |
+| `agents.py` | `/api/agents` — register/remove/switch which agent the app manages |
+| `capabilities.py` | per-agent capability map and canonical identity (drives which pages/features each agent sees) |
+| `discovery.py` | `/api/status`, `/api/discover`, `/api/scan` — find agents, read their main JSON read-only |
+| `agentstore.py` | **the heart**: reads/writes the agent's real BDF files (providers, models, plugins, mcp, settings), backups, builder discovery, agent registry logic |
+| `providers.py` | `/api/providers` CRUD + `/api/switch` + models writing |
+| `profiles.py` | `/api/profiles` — list profiles, switch the active one |
+| `plugins.py` | `/api/plugins` — profile plugin list |
+| `mcp.py` | `/api/mcp` — profile MCP servers |
+| `lsp.py` | `/api/lsp` — profile LSP toggle + value |
+| `engine.py` | `/api/scaffold` (runs the bundled engine's scaffold) + `/api/build`, setup verify/revert |
+| `testing.py` | `/api/test` — connection tester (GET /v1/models) |
+| `proxy.py` | `/v1/*` — OpenAI-compatible passthrough to the ACTIVE provider |
+| `activity.py` | `/api/activity` (+ summary): bounded, privacy-safe local proxy metadata |
+| `preferences.py` | `/api/preferences`: retention, motion, browser preference; redaction stays mandatory |
+| `claude_adapter.py` | Claude Code routes: save/edit/delete/apply/restore with transaction contract |
+| `claude_credentials.py` | Windows DPAPI-encrypted credential store (names only leave it) |
+| `claude_envvars.py` | user-scope environment-variable management for Claude route credentials |
+| `claude_inventory.py` | read-only inventory scan of Claude-owned MCP servers and plugins |
+| `serve.py` | `GET /` (gui.html) with the rule.md theme injected, `/api/rules` |
+| `rules.py` | parses `rule.md` (theme front-matter + rulebook); never crashes on bad input |
+| `banner.py` | local startup banner and local addresses |
 
 ---
 
@@ -408,14 +460,24 @@ built-in look and shows a warning in the black window — nothing breaks.
 ## Claude Code
 
 The app includes a narrow Claude Code routing adapter (one scalar route at a
-time) documented under `adapters/claude-code/`. Claude Code is its own mode
-in the app: a tile on "Connect your agent", a tab in the agent switcher, and
-a separate Routes page (routing profiles + the Gateway compatibility
-assistant). Saving a route can create the gateway credential as a Windows
-environment variable for you and removes it again when the route is removed.
-A read-only inventory shows the MCP servers (with types) and plugins Claude
-Code has configured, scanned from the Claude state file and the managed
-settings file - never edited. Lifecycle status: **Live validated** (2026-08-17,
-corrected Gate 5B live validation PASS + Gate 5C approved; see
-`adapters/claude-code/`). Apply/restore stay lock-gated until the owner opens
-the real-target lock.
+time) documented under [`adapters/claude-code/`](../adapters/claude-code/README.md).
+Claude Code is its own mode in the app: a tile on "Connect your agent", a tab
+in the agent switcher, and a separate Routes page (routing profiles + the
+Gateway compatibility assistant). Route keys pasted in the route form are
+stored in a **Windows DPAPI-encrypted** credential store — the route only ever
+references them by name. A read-only inventory shows the MCP servers (with
+types) and plugins Claude Code has configured, scanned from the Claude state
+file and the managed settings file - never edited. Lifecycle status:
+**Live validated** (2026-08-17, corrected Gate 5B live validation PASS + Gate
+5C approved; see `adapters/claude-code/`). The real-target lock was opened by
+owner decision (session 48), so Apply/Restore work from the UI.
+
+---
+
+## More documentation
+
+- [Main README](../README.md) — what Switcher is, install, demos
+- [BDF framework guide](../bdf/README.md) — the engineering process behind the builders
+- [Claude Code adapter](../adapters/claude-code/README.md) — adapter scope, ownership boundaries, evidence
+- [Architecture](../ARCHITECTURE.md) · [JSON schemas](../JSON_SCHEMAS.md) · [Testing](../TESTING.md)
+- [Contributing](../CONTRIBUTING.md) · [Security policy](../SECURITY.md) · [Code of conduct](../CODE_OF_CONDUCT.md)

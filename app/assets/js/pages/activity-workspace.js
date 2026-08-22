@@ -1,4 +1,5 @@
 import { escapeHtml } from "../core/dialog.js";
+import { activityRangeOptions, activityRangeWindow } from "../core/activity-range.js";
 
 const COLORS = ["#6841bd", "#f36556", "#9c88d3", "#4d75c9", "#dc9d43"];
 const BRANDS = {
@@ -46,7 +47,7 @@ function aggregateProviders(events) {
 }
 
 function trafficBuckets(events, days) {
-  const count = 32, end = Date.now(), start = end - days * 86400000, size = Math.max(1, (end - start) / count);
+  const count = 32, { start, end } = activityRangeWindow(events, days), size = Math.max(1, (end - start) / count);
   const buckets = Array.from({ length: count }, () => ({ successful: 0, failed: 0 }));
   for (const event of events) {
     const time = eventTime(event)?.valueOf() ?? end;
@@ -61,7 +62,7 @@ function trafficChart(events, days) {
   return `<div class="activity-traffic-chart" role="img" aria-label="Requests over time: ${events.length} calls in the selected period">
     <div class="activity-y-axis"><span>${max}</span><span>${Math.ceil(max * .66)}</span><span>${Math.ceil(max * .33)}</span><span>0</span></div>
     <div class="activity-bars">${buckets.map((item, index) => `<span class="activity-bar" title="Bucket ${index + 1}: ${item.successful} successful, ${item.failed} failed"><i class="activity-bar__success" style="--h:${item.successful / max * 100}%"></i><i class="activity-bar__failed" style="--h:${item.failed / max * 100}%"></i></span>`).join("")}</div>
-    <div class="activity-x-axis"><span>${days === 1 ? "24 hours ago" : `${days} days ago`}</span><span>Now</span></div>
+    <div class="activity-x-axis"><span>${days === 0 ? "Oldest retained" : days === 1 ? "24 hours ago" : `${days} days ago`}</span><span>Now</span></div>
   </div>`;
 }
 
@@ -110,7 +111,7 @@ export function renderActivityWorkspace(workspace, { events, summary, days, onDa
 
     workspace.innerHTML = `<section class="activity-dashboard">
       <header class="activity-page-head"><div><h1>Activity &amp; API logs</h1></div><div class="activity-filters control-room-card control-room-card--settings">
-        <label><span class="sr-only">Date range</span><select id="activityRange"><option value="1" ${days === 1 ? "selected" : ""}>Last 24 hours</option><option value="7" ${days === 7 ? "selected" : ""}>Last 7 days</option><option value="30" ${days === 30 ? "selected" : ""}>Last 30 days</option></select></label>
+        <label><span class="sr-only">Date range</span><select id="activityRange" aria-label="Activity date range">${activityRangeOptions(days)}</select></label>
         <label><span class="sr-only">Provider</span><select id="activityProvider"><option value="all">All providers</option>${providers.map(item => `<option value="${escapeHtml(item.name)}" ${state.provider === item.name ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}</select></label>
         <label><span class="sr-only">Status</span><select id="activityStatus"><option value="all">All statuses</option><option value="success" ${state.status === "success" ? "selected" : ""}>Successful</option><option value="failed" ${state.status === "failed" ? "selected" : ""}>Failed</option></select></label>
       </div></header>

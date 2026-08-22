@@ -153,11 +153,21 @@ class ActivityTests(unittest.TestCase):
             "traceId": trace_id,
             "providerId": "p",
             "status": 200,
-        }) + "\\n" for timestamp, trace_id in ((older, "older"), (current, "current"))), encoding="utf-8")
+        }) + "\n" for timestamp, trace_id in ((older, "older"), (current, "current"))), encoding="utf-8")
 
         events = activity.list_events(0, 10)
         self.assertEqual([event["traceId"] for event in events], ["current", "older"])
         self.assertEqual(activity.summary(0)["requestCount"], 2)
+
+    def test_all_time_endpoint_accepts_the_full_retention_limit(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        server = FastAPI()
+        server.include_router(activity.router)
+        with TestClient(server) as client:
+            response = client.get("/api/activity?days=0&limit=1000")
+        self.assertEqual(response.status_code, 200)
     def test_server_exposes_activity_list_and_summary_endpoints(self):
         """Catches an implemented activity module that the GUI cannot reach."""
         from server import app as server_app

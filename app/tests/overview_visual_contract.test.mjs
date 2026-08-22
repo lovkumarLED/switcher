@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const gui = await readFile(new URL("../gui.html", import.meta.url), "utf8");
 const overview = await readFile(new URL("../assets/js/pages/overview.js", import.meta.url), "utf8");
+const activityRange = await readFile(new URL("../assets/js/core/activity-range.js", import.meta.url), "utf8");
 const responsive = await readFile(new URL("../assets/css/responsive.css", import.meta.url), "utf8");
 const workspace = await readFile(new URL("../assets/css/workspace.css", import.meta.url), "utf8");
 
@@ -15,20 +16,22 @@ test("workspace sidebar uses the approved navigation icon set", () => {
 
 test("overview header range control reloads overview data for every supported range", () => {
   assert.match(overview, /overviewRange/);
-  assert.match(overview, /Last 24 hours/);
-  assert.match(overview, /Last 7 days/);
-  assert.match(overview, /Last 30 days/);
+  assert.match(activityRange, /Last 24 hours/);
+  assert.match(activityRange, /Last 7 days/);
+  assert.match(activityRange, /Last 30 days/);
   assert.match(overview, /icon\.calendar/);
   assert.match(overview, /activitySummary\(days\)/);
   assert.match(overview, /activity\(days,/);
+  assert.match(overview, /api\.activity\(days, 1000\)/);
   assert.match(overview, /overviewRange[\s\S]*addEventListener\("change"/);
 });
 
 test("overview range selection persists and includes all time", () => {
+  assert.match(overview, /from "\.\.\/core\/activity-range\.js"/);
   assert.match(overview, /readActivityRange/);
   assert.match(overview, /writeActivityRange/);
-  assert.match(overview, /All time/);
-  assert.match(overview, /renderOverview\(workspace, readActivityRange\(\)\)/);
+  assert.match(activityRange, /All time/);
+  assert.match(overview, /days = readActivityRange\(\)/);
 });
 test("overview relay action labels match their activation semantics", () => {
   assert.match(overview, /data-relay-action="deactivate">Deactivate provider/);

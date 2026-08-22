@@ -4,6 +4,7 @@ import { escapeHtml, notify } from "../core/dialog.js";
 import { isClaude } from "../core/capabilities.js";
 import { providerLogoMark } from "../core/provider-logo.js";
 import { openRouteDetails } from "./claude-routes.js";
+import { activityRangeLabel, activityRangeOptions, activityRangeWindow, readActivityRange, writeActivityRange } from "../core/activity-range.js";
 
 const RESTART_NOTICE = "Restarting Claude Code may be required for startup-only values.";
 
@@ -368,7 +369,7 @@ export async function renderOverview(workspace, days = readActivityRange()) {
   const [providerData, summaryData, events, statusData] = await Promise.all([
     optional(() => api.providers(), { providers: [], activeProvider: null }),
     optional(() => api.activitySummary(days), { requestCount: 0, failedRequestCount: 0, successRate: 0, medianLatencyMs: null }),
-    optional(() => api.activity(days, 100), []),
+    optional(() => api.activity(days, 1000), []),
     optional(() => api.status(), { agent: null }),
   ]);
   const providers = Array.isArray(providerData.providers) ? providerData.providers : [];

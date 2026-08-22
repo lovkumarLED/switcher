@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const source = readFileSync(new URL("../assets/js/pages/activity.js", import.meta.url), "utf8") + readFileSync(new URL("../assets/js/pages/activity-workspace.js", import.meta.url), "utf8");
+const activity = readFileSync(new URL("../assets/js/pages/activity.js", import.meta.url), "utf8");
+const activityWorkspace = readFileSync(new URL("../assets/js/pages/activity-workspace.js", import.meta.url), "utf8");
+const activityRange = readFileSync(new URL("../assets/js/core/activity-range.js", import.meta.url), "utf8");
+const source = activity + activityWorkspace + activityRange;
 const css = readFileSync(new URL("../assets/css/activity-workspace.css", import.meta.url), "utf8");
 
 test("activity page contains the approved observability blocks", () => {
@@ -25,8 +28,10 @@ test("activity page exposes range, provider, and status filters", () => {
 });
 
 test("activity range shares persisted selection and supports all time", () => {
+  assert.match(source, /from "\.\.\/core\/activity-range\.js"/);
   assert.match(source, /readActivityRange/);
   assert.match(source, /writeActivityRange/);
+  assert.match(activity, /api\.activity\(range, 1000\)/);
   assert.match(source, /All time/);
   assert.match(source, /onDaysChange\(Number\(event.target.value\)\)/);
 });

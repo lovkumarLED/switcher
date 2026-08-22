@@ -63,8 +63,10 @@ def record_event(event):
 
 
 def list_events(days, limit):
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    retained = [event for event in _read_events() if _event_time(event) >= cutoff]
+    retained = _read_events()
+    if days > 0:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        retained = [event for event in retained if _event_time(event) >= cutoff]
     return list(reversed(retained[-limit:]))
 
 
@@ -94,10 +96,10 @@ def summary(days):
 
 
 @router.get("/api/activity")
-def read_activity(days: int = Query(30, ge=1, le=365), limit: int = Query(100, ge=1, le=500)):
+def read_activity(days: int = Query(30, ge=0, le=365), limit: int = Query(100, ge=1, le=MAX_EVENTS)):
     return list_events(days, limit)
 
 
 @router.get("/api/activity/summary")
-def read_summary(days: int = Query(30, ge=1, le=365)):
+def read_summary(days: int = Query(30, ge=0, le=365)):
     return summary(days)

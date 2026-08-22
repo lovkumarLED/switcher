@@ -1,4 +1,4 @@
-# PROMO MESSAGES — launch pack for Builder-Development-Framework-BDF
+# PROMO MESSAGES — launch pack for Switcher
 
 > Copy-paste kit. Written in the owner's voice. Do not post anywhere until the
 > repo is public AND the owner says go. (Owner rule: messages are written here,
@@ -39,7 +39,7 @@ So I made a system for myself — builders that generate your coding agent's con
 
 If you're learning AI like me and juggling free models... check it out 👇
 
-https://github.com/lovkumarLED/Builder-Development-Framework-BDF
+https://github.com/lovkumarLED/switcher
 
 If you like it, use it. If you want to, contribute. That would make me happy. ❤️
 
@@ -61,7 +61,7 @@ I built it with coding agents, days of debugging, and a lot of trial and error �
 
 If you're juggling AI tools and configs like I was — check it out. Contributions are welcome. It genuinely makes me happy when something I built helps someone else.
 
-https://github.com/lovkumarLED/Builder-Development-Framework-BDF
+https://github.com/lovkumarLED/switcher
 
 **LinkedIn tips (2026):** hashtags still matter there (2-5, three is the sweet
 spot); saves drive ~5x the reach of a like; comments beat likes; post
@@ -106,7 +106,7 @@ The details that matter to me:
 
 Built entirely by me + coding agents over days of trial and error. I'm still learning and improving (Claude Code next). If you're juggling AI tools like I was — check it out, and contributions are welcome.
 
-https://github.com/lovkumarLED/Builder-Development-Framework-BDF
+https://github.com/lovkumarLED/switcher
 
 ### Short "edit" version (quick post or comment)
 
@@ -130,7 +130,7 @@ How many API keys are YOU managing right now?
 ### Variant A — reply (post immediately after; the link lives here)
 
 If you're learning AI like me 👇
-https://github.com/lovkumarLED/Builder-Development-Framework-BDF
+https://github.com/lovkumarLED/switcher
 
 ### Variant B — main tweet (one hashtag only)
 
@@ -141,7 +141,7 @@ What does YOUR agent config look like? Mine was chaos. #buildinpublic
 ### Variant B — reply
 
 Check it out 👇
-https://github.com/lovkumarLED/Builder-Development-Framework-BDF
+https://github.com/lovkumarLED/switcher
 
 ---
 
@@ -149,6 +149,6 @@ https://github.com/lovkumarLED/Builder-Development-Framework-BDF
 
 yo check this out — I built this thing over the past days with coding agents. It's a manager for coding agents basically: generates your agent's config (opencode/kilo and more) + a GUI app where you add providers, models, MCPs, plugins, test connections, and build with one click. Everything local, keys never leave your machine, and it's free.
 
-I made it because I was drowning in API keys and configs while learning ML on free models. If you're into that kinda thing: https://github.com/lovkumarLED/Builder-Development-Framework-BDF
+I made it because I was drowning in API keys and configs while learning ML on free models. If you're into that kinda thing: https://github.com/lovkumarLED/switcher
 
 (the docs even have a demo gif of the app lol)

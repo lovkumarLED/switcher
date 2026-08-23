@@ -198,3 +198,9 @@ test("dialog settlement resolves false once on non-confirm close", () => {
   settle(false); settle(false);
   assert.deepEqual(values, [false]);
 });
+
+test("onboarding preset fallback reads the entry key, not the entries array", () => {
+  const source = readFileSync(new URL("../assets/js/pages/onboarding.js", import.meta.url), "utf8");
+  assert.match(source, /selectedProvider = presets\[0\]\[0\]/, "presets[0] is a [key, value] entry; the fallback key is presets[0][0]");
+  assert.doesNotMatch(source, /presets\[0\]\.id/, "presets[0].id is always undefined and broke onboarding when litellm/cli-proxy presets were filtered out");
+});

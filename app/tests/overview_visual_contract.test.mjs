@@ -7,6 +7,7 @@ const overview = await readFile(new URL("../assets/js/pages/overview.js", import
 const activityRange = await readFile(new URL("../assets/js/core/activity-range.js", import.meta.url), "utf8");
 const responsive = await readFile(new URL("../assets/css/responsive.css", import.meta.url), "utf8");
 const workspace = await readFile(new URL("../assets/css/workspace.css", import.meta.url), "utf8");
+const providerWorkspace = await readFile(new URL("../assets/css/provider-workspace.css", import.meta.url), "utf8");
 
 test("workspace sidebar uses the approved navigation icon set", () => {
   for (const name of ["providers", "activity", "integrations", "settings"]) {
@@ -75,4 +76,23 @@ test("relay card actions stay inside the front provider card", () => {
   assert.match(workspace, /\.relay-front__actions \.button\s*\{[^}]*width:\s*100%[^}]*min-width:\s*0/s);
   assert.match(workspace, /\.relay-front__meta div\s*\{[^}]*min-width:\s*0[^}]*overflow:\s*hidden/s);
   assert.match(workspace, /\.relay-front__meta dd\s*\{[^}]*min-width:\s*0[^}]*overflow:\s*hidden[^}]*text-overflow:\s*ellipsis/s);
+});
+
+test("claude route deck footer stays keyboard-reachable while visually sr-only", () => {
+  // Owner decision (7468b25): arrows are assistive-tech-only controls; the
+  // visual surface is scroll/drag/keyboard on the deck card itself.
+  const footerBlocks = [...providerWorkspace.matchAll(/\.claude-route-deck__footer\s*\{([^}]*)\}/g)].map(m => m[1]);
+  assert.ok(footerBlocks.length >= 2, "footer needs its layout rule and the sr-only rule");
+  const hidden = footerBlocks.find(body => /clip-path:\s*inset\(50%\)/.test(body));
+  assert.ok(hidden, "sr-only treatment must be present");
+  assert.match(hidden, /overflow:\s*hidden/, "sr-only pattern complete");
+  for (const body of footerBlocks) {
+    assert.doesNotMatch(body, /display:\s*none/, "controls must stay in the a11y tree");
+    assert.doesNotMatch(body, /visibility:\s*hidden/, "controls must stay in the a11y tree");
+  }
+  assert.match(overview, /data-claude-route-prev/);
+  assert.match(overview, /data-claude-route-next/);
+  assert.match(overview, /keydown[^{]*\{[^}]*ArrowRight/s, "deck must step via arrow keys");
+  assert.match(overview, /addEventListener\("wheel"/s, "deck must step via wheel");
+  assert.match(overview, /pointerdown/, "deck must support drag stepping");
 });

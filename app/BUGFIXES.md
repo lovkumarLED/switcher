@@ -18,6 +18,13 @@ Copy this block into Entries when a fix lands:
 
 ## Entries
 
+### 2026-08-23 - OpenCode onboarding dead-ended at the review step for workspaces already running LiteLLM or CLI Proxy
+
+- **Symptom:** Clicking "Use this workspace" during onboarding kept the wizard stuck on "Review your workspace" and showed the raw error `Cannot read properties of undefined (reading 'baseUrl')` instead of the provider step. It only happened on machines whose agent config already had a provider named like a preset (`litellm`, `cli-proxy*`).
+- **Root cause:** `onboarding.js` filtered preset choices against existing provider IDs, then fell back with `selectedProvider = presets[0].id`. `presets[0]` is a `[key, value]` entry from `Object.entries(...)`, so `.id` is always `undefined`; `providerPresets[undefined]` then crashed `providerScreenMarkup()` at `preset.baseUrl`.
+- **Fix:** `assets/js/pages/onboarding.js` fallback now reads the entry key: `presets[0][0]`.
+- **Verified:** Live click-through of the full OpenCode onboarding (review -> provider step -> skip -> dashboard) with no alert; provider choices correctly reduce to `custom` when both presets are filtered; new source-contract regression test in `tests/frontend_review.test.mjs` ("onboarding preset fallback reads the entry key, not the entries array"); frontend suite 25/25 in that file.
+
 ### 2026-08-22 - Backup-ring guard failures were masked as an opaque "could not be applied" 500
 
 - **Symptom:** Live route apply failed with a generic 500 ("The route could not be applied.") even though the real problem was the backup ring being full with a stale manifest record whose backup file no longer existed on disk — the operator could not know the actual cause or the fix.

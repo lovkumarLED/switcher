@@ -503,6 +503,11 @@
   animation-delay: 0ms;
 }
 
+/*
+ * Claude route deck footer controls stay in the DOM for keyboard and
+ * screen-reader users (owner decision, commit 7468b25); the card itself is
+ * the visual control surface via scroll, drag, and arrow keys.
+ */
 .claude-route-deck__footer {
   position: absolute;
   width: 1px;

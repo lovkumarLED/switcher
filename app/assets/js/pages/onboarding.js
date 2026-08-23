@@ -176,7 +176,7 @@ function providerScreenMarkup() {
   const isCustom = selectedProvider === "custom";
   const existingIds = (scanResult?.providers || []).map(provider => String(provider).toLowerCase());
   const presets = Object.entries(providerPresets).filter(([id]) => id === "custom" || !existingIds.some(name => name.includes(id) || id.includes(name)));
-  if (!presets.some(([id]) => id === selectedProvider)) selectedProvider = presets[0].id;
+  if (!presets.some(([id]) => id === selectedProvider)) selectedProvider = presets[0][0];
   const choices = presets.map(([id, provider]) => `<button class="first-provider-choice" type="button" data-first-provider="${id}" aria-pressed="${selectedProvider === id}">${providerLogo(id)}<strong>${provider.name}</strong><span class="choice-radio" aria-hidden="true"></span></button>`).join("");
   const preset = providerPresets[selectedProvider];
   const customRow = isCustom ? `<div class="fp-grid3"><div class="onboarding-input"><input id="firstProviderId" type="text" placeholder="Provider ID (my-provider)" aria-label="Provider ID" autocomplete="off"></div><div class="onboarding-input"><input id="firstProviderName" type="text" placeholder="Display name (My AI Provider)" aria-label="Display name" autocomplete="off"></div><div class="onboarding-input"><input id="firstProviderUrl" type="text" placeholder="https://api.example.com/v1" aria-label="Base URL" autocomplete="off"></div></div>` : "";

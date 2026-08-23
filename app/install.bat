@@ -66,7 +66,7 @@ set "SHORTCUT_DIR="
 for /f "delims=" %%d in ('powershell -NoProfile -Command "[Environment]::GetFolderPath('Desktop')"') do set "SHORTCUT_DIR=%%d"
 if "%SHORTCUT_DIR%"=="" set "SHORTCUT_DIR=%USERPROFILE%\Desktop"
 if not "%~1"=="" set "SHORTCUT_DIR=%~1"
-powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $sc = $ws.CreateShortcut((Join-Path '%SHORTCUT_DIR%' 'Switcher.lnk')); $sc.TargetPath = '%~dp0start.bat'; $sc.WorkingDirectory = '%~dp0'; $sc.Description = 'Switcher - manage your AI agents, providers and configs'; $sc.Save()" >nul 2>nul
+powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $sc = $ws.CreateShortcut((Join-Path '%SHORTCUT_DIR%' 'Switcher.lnk')); $sc.TargetPath = '%~dp0start.bat'; $sc.WorkingDirectory = '%~dp0'; $sc.IconLocation = '%~dp0assets\switcher.ico'; $sc.Description = 'Switcher - manage your AI agents, providers and configs'; $sc.Save()" >nul 2>nul
 if errorlevel 1 (
     echo       Could not create the shortcut - you can still run start.bat manually.
 ) else (

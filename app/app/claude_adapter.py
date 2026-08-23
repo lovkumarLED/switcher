@@ -11,7 +11,6 @@ import hashlib
 import json
 import os
 import re
-import secrets
 import shutil
 import subprocess
 import threading
@@ -149,8 +148,7 @@ def _route_view(route):
     (64-hex SHA-256) and the effective (possibly role-derived) main model so the
     frontend can compare against the applied fingerprint and display what would
     actually run. Never persisted in claude-routes.json."""
-    view = {key: value for key, value in route.items() if key != "credentialRevision"}
-    return dict(view, configSha256=_fingerprint(route), effectiveModel=_effective_model(route))
+    return dict(route, configSha256=_fingerprint(route), effectiveModel=_effective_model(route))
 
 
 def _fingerprint(route):
@@ -166,9 +164,6 @@ def _fingerprint(route):
         "modelRoles": route.get("modelRoles") or {},
         "restrictModelPicker": route.get("restrictModelPicker", True),
     }
-    credential_revision = route.get("credentialRevision")
-    if credential_revision:
-        payload["credentialRevision"] = credential_revision
     text = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -601,78 +596,6 @@ def _store_route_credential(ref, value):
             pass
 
 
-def _routes_with_credential_revision(routes, ref, revision):
-    return [
-        dict(route, credentialRevision=revision, credentialBackend="store", envVarManaged=True)
-        if route.get("secretEnvRef") == ref
-        else route
-        for route in routes
-    ]
-
-
-def _snapshot_route_credentials(refs):
-    refs = {ref for ref in refs if ref}
-    try:
-        store_bytes = claude_credentials.CREDENTIALS_FILE.read_bytes()
-    except FileNotFoundError:
-        store_bytes = None
-    env = {}
-    for ref in refs:
-        exists = claude_envvars.user_env_exists(ref)
-        env[ref] = (
-            exists,
-            claude_envvars.user_env_get(ref) if exists else None,
-            ref in os.environ,
-            os.environ.get(ref),
-        )
-    return store_bytes, env
-
-
-def _restore_route_credentials(snapshot):
-    store_bytes, env = snapshot
-    path = claude_credentials.CREDENTIALS_FILE
-    if store_bytes is None:
-        try:
-            path.unlink()
-        except FileNotFoundError:
-            pass
-    else:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".rollback.tmp")
-        tmp.write_bytes(store_bytes)
-        tmp.replace(path)
-    for ref, (existed, value, process_existed, process_value) in env.items():
-        if existed:
-            claude_envvars.set_user_env(ref, value or "")
-        else:
-            claude_envvars.delete_user_env(ref)
-        if process_existed:
-            os.environ[ref] = process_value or ""
-        else:
-            os.environ.pop(ref, None)
-
-
-def _commit_route_with_credential_rollback(store, event_type, route_id, credential_snapshot=None):
-    try:
-        _commit_store_and_activity(store, event_type, route_id)
-    except Exception:
-        if credential_snapshot is not None:
-            try:
-                _restore_route_credentials(credential_snapshot)
-            except OSError:
-                raise HTTPException(500, "The route could not be saved and its credential could not be restored.")
-        raise
-
-
-def _raise_credential_store_failure(snapshot):
-    try:
-        _restore_route_credentials(snapshot)
-    except OSError:
-        raise HTTPException(500, "The credential could not be saved or restored.")
-    raise HTTPException(500, "The credential could not be saved.")
-
-
-
 def _resolve_route_credential(route):
     """Resolve the route's credential into the process environment so the
     production builder child can read it. Store-backed routes decrypt from the
@@ -921,31 +844,20 @@ def claude_route_create(body: RouteCreateBody):
         route["id"] = _generate_route_id(store)
         route["createdAt"] = datetime.now(timezone.utc).isoformat()
         route["updatedAt"] = route["createdAt"]
-        secret_value = body.secretValue.strip()
-        credential_snapshot = None
-        credential_revision = None
-        if secret_value:
-            credential_snapshot = _snapshot_route_credentials([route["secretEnvRef"]])
-            credential_revision = secrets.token_hex(16)
+        if body.secretValue.strip():
             try:
-                _store_route_credential(route["secretEnvRef"], secret_value)
+                _store_route_credential(route["secretEnvRef"], body.secretValue.strip())
                 route["credentialBackend"] = "store"
                 route["envVarManaged"] = True
-                route["credentialRevision"] = credential_revision
             except OSError:
-                _raise_credential_store_failure(credential_snapshot)
+                route["credentialBackend"] = "env"
+                route["envVarManaged"] = False
         else:
             route["credentialBackend"] = "env"
             route["envVarManaged"] = False
-        routes = list(store.get("routes", []))
-        if credential_revision:
-            routes = _routes_with_credential_revision(
-                routes, route["secretEnvRef"], credential_revision)
-        routes.append(route)
         new_store = dict(store)
-        new_store["routes"] = routes
-        _commit_route_with_credential_rollback(
-            new_store, "route_created", route["id"], credential_snapshot)
+        new_store["routes"] = list(store.get("routes", [])) + [route]
+        _commit_store_and_activity(new_store, "route_created", route["id"])
         return {"route": _route_view(route), "routesRevision": _routes_revision(new_store)}
 
 
@@ -968,45 +880,22 @@ def claude_route_edit(route_id: str, body: RouteEditBody):
         old_managed = bool(existing.get("envVarManaged"))
         old_ref = existing.get("secretEnvRef")
         new_ref = route["secretEnvRef"]
-        secret_value = body.secretValue.strip()
-        credential_snapshot = None
-        if old_ref != new_ref or secret_value:
-            credential_snapshot = _snapshot_route_credentials([old_ref, new_ref])
-        credential_revision = None
-        if secret_value:
-            credential_revision = secrets.token_hex(16)
         if old_ref != new_ref:
             _remove_route_credential(store, old_ref, exclude_id=route_id,
                                      store_backed=old_backend == "store", env_managed=old_managed)
-            shared_routes = [r for r in store.get("routes", [])
-                             if r.get("id") != route_id and r.get("secretEnvRef") == new_ref]
-            shared = shared_routes[0] if shared_routes else None
-            has_stored_credential = claude_credentials.has(new_ref)
-            route["credentialBackend"] = "store" if has_stored_credential else (
-                shared.get("credentialBackend", "env") if shared else "env")
-            route["envVarManaged"] = has_stored_credential or bool(
-                shared and shared.get("envVarManaged"))
-            route.pop("credentialRevision", None)
-            if has_stored_credential:
-                revision_source = next((
-                    r for r in shared_routes if r.get("credentialRevision")), None)
-                if revision_source:
-                    route["credentialRevision"] = revision_source["credentialRevision"]
-        if secret_value:
+            route["credentialBackend"] = "env"
+            route["envVarManaged"] = False
+        if body.secretValue.strip():
             try:
-                _store_route_credential(new_ref, secret_value)
+                _store_route_credential(new_ref, body.secretValue.strip())
                 route["credentialBackend"] = "store"
                 route["envVarManaged"] = True
-                route["credentialRevision"] = credential_revision
             except OSError:
-                _raise_credential_store_failure(credential_snapshot)
-        routes = [r if r.get("id") != route_id else route for r in store.get("routes", [])]
-        if credential_revision:
-            routes = _routes_with_credential_revision(routes, new_ref, credential_revision)
+                route["credentialBackend"] = "env"
+                route["envVarManaged"] = False
         new_store = dict(store)
-        new_store["routes"] = routes
-        _commit_route_with_credential_rollback(
-            new_store, "route_edited", route_id, credential_snapshot)
+        new_store["routes"] = [r if r.get("id") != route_id else route for r in store.get("routes", [])]
+        _commit_store_and_activity(new_store, "route_edited", route_id)
         return {"route": _route_view(route), "routesRevision": _routes_revision(new_store)}
 
 

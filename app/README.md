@@ -56,6 +56,13 @@ point `BDF_SCRIPTS_DIR` at their own copy of the engine.)
 3. From now on, double-click the desktop shortcut (or `start.bat`).
 4. Your browser opens the app automatically.
 
+> **The "Switcher" shortcut is a pointer to `start.bat` inside the `app` folder —
+> never copy `start.bat` (or `install.bat`) to another folder.** The scripts use
+> relative paths (`env\`, `server.py`, `requirements.txt`), so they only work
+> from their own folder. If the shortcut doesn't appear on your desktop, your
+> desktop may be redirected (e.g. OneDrive) — `install.bat` now puts the
+> shortcut on your **real** desktop automatically.
+
 Prefer commands? From PowerShell:
 
 ```powershell

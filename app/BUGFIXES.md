@@ -18,6 +18,13 @@ Copy this block into Entries when a fix lands:
 
 ## Entries
 
+### 2026-08-23 - install.bat put the Switcher shortcut on an invisible desktop (OneDrive redirection)
+
+- **Symptom:** After running `install.bat`, no "Switcher" icon appeared on the desktop even though the script said "Shortcut created". (Also: a copy of `start.bat` placed on the desktop did nothing when double-clicked.)
+- **Root cause:** `install.bat` hardcoded `SHORTCUT_DIR=%USERPROFILE%\Desktop`. When Windows redirects the desktop (default for Microsoft-account users, e.g. to `C:\Users\<you>\OneDrive\Desktop`), that folder still exists but is never shown — the shortcut was created somewhere invisible. The copied-`start.bat` symptom is the same relative-path trap: both scripts use `%~dp0`-relative paths (`env\`, `server.py`, `requirements.txt`), so a copy outside the `app` folder can never find them.
+- **Fix:** `app/install.bat` now resolves the real desktop with `[Environment]::GetFolderPath('Desktop')` (PowerShell), falls back to `%USERPROFILE%\Desktop` if empty, and still honors the optional `%~1` override directory.
+- **Verified:** On this OneDrive-redirected machine: bare `install.bat` now creates `Switcher.lnk` on the real desktop (`OneDrive\Desktop`) and nothing in the legacy folder; an override-dir run creates a shortcut whose target/working-directory point at `app\start.bat` (verified via COM); env + requirements-hash steps skip correctly on re-runs.
+
 ### 2026-08-23 - OpenCode onboarding dead-ended at the review step for workspaces already running LiteLLM or CLI Proxy
 
 - **Symptom:** Clicking "Use this workspace" during onboarding kept the wizard stuck on "Review your workspace" and showed the raw error `Cannot read properties of undefined (reading 'baseUrl')` instead of the provider step. It only happened on machines whose agent config already had a provider named like a preset (`litellm`, `cli-proxy*`).

@@ -62,7 +62,9 @@ if not "%CUR_HASH%"=="%OLD_HASH%" (
 )
 
 echo [2/2] Creating a desktop shortcut...
-set "SHORTCUT_DIR=%USERPROFILE%\Desktop"
+set "SHORTCUT_DIR="
+for /f "delims=" %%d in ('powershell -NoProfile -Command "[Environment]::GetFolderPath('Desktop')"') do set "SHORTCUT_DIR=%%d"
+if "%SHORTCUT_DIR%"=="" set "SHORTCUT_DIR=%USERPROFILE%\Desktop"
 if not "%~1"=="" set "SHORTCUT_DIR=%~1"
 powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $sc = $ws.CreateShortcut((Join-Path '%SHORTCUT_DIR%' 'Switcher.lnk')); $sc.TargetPath = '%~dp0start.bat'; $sc.WorkingDirectory = '%~dp0'; $sc.Description = 'Switcher - manage your AI agents, providers and configs'; $sc.Save()" >nul 2>nul
 if errorlevel 1 (

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -280,6 +281,27 @@ class FingerprintTests(ClaudeAdapterBase):
         renamed = dict(route, name="Different")
         self.assertEqual(claude_adapter._fingerprint(renamed), fp)
 
+    def test_route_without_credential_revision_keeps_legacy_fingerprint(self):
+        route = self.create_route()
+        legacy_payload = {
+            "baseUrl": route["baseUrl"],
+            "authKind": route["authKind"],
+            "secretEnvRef": route["secretEnvRef"],
+            "model": route["effectiveModel"],
+            "gatewayDiscovery": route["gatewayDiscovery"],
+            "disableExperimentalBetas": route["disableExperimentalBetas"],
+            "autoCompactWindow": route["autoCompactWindow"],
+            "disableNonessentialTraffic": route["disableNonessentialTraffic"],
+            "modelRoles": route.get("modelRoles") or {},
+            "restrictModelPicker": route.get("restrictModelPicker", True),
+        }
+        legacy_text = json.dumps(
+            legacy_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+
+        expected = hashlib.sha256(legacy_text.encode("utf-8")).hexdigest()
+        self.assertEqual(claude_adapter._fingerprint(route), expected)
+
     def test_null_applied_requires_null_fingerprint(self):
         store = self.store()
         self.assertIsNone(store["appliedRouteId"])
@@ -301,6 +323,33 @@ class FingerprintTests(ClaudeAdapterBase):
             expectedRoutesRevision=new_rev))
         store_after = self.store()
         self.assertNotEqual(store_after["appliedRouteConfigSha256"], claude_adapter._fingerprint(edited["route"]))
+
+    def test_edit_applied_route_with_new_api_key_changes_fingerprint_state(self):
+        route = self.create_route()
+        store = self.store()
+        store["appliedRouteId"] = route["id"]
+        store["appliedRouteConfigSha256"] = route["configSha256"]
+        claude_adapter._atomic_write(
+            self.routes_file,
+            json.dumps(store, indent=2, ensure_ascii=False) + "\n",
+        )
+
+        result = claude_adapter.claude_routes()
+        edited = claude_adapter.claude_route_edit(route["id"], claude_adapter.RouteEditBody(
+            name=route["name"], baseUrl=route["baseUrl"], authKind=route["authKind"], secretEnvRef=route["secretEnvRef"],
+            model=route["model"], gatewayDiscovery=route["gatewayDiscovery"], disableExperimentalBetas=route["disableExperimentalBetas"],
+            autoCompactWindow=route["autoCompactWindow"], disableNonessentialTraffic=route["disableNonessentialTraffic"],
+            secretValue="replacement-api-key", expectedRoutesRevision=result["routesRevision"]))
+
+        after = claude_adapter.claude_routes()
+        self.assertEqual(after["appliedRouteId"], route["id"])
+        self.assertNotEqual(after["appliedRouteConfigSha256"], edited["route"]["configSha256"])
+        detail = claude_adapter.claude_route_detail(route["id"])
+        self.assertNotIn("credentialRevision", edited["route"])
+        self.assertNotIn("credentialRevision", after["routes"][0])
+        self.assertNotIn("credentialRevision", detail["route"])
+        self.assertNotIn("replacement-api-key", json.dumps([edited, after, detail]))
+        self.assertNotIn("replacement-api-key", self.routes_file.read_text(encoding="utf-8"))
 
 
 class ModelRolesTests(ClaudeAdapterBase):
@@ -1247,6 +1296,142 @@ class EnvVarLifecycleTests(ClaudeAdapterBase):
         self.assertEqual(edited["credentialBackend"], "store")
         self.assertTrue(edited["envVarManaged"])
         self.assertEqual(claude_adapter.claude_credentials.resolve("BDF_GATE4A_API_KEY_REF"), "second")
+
+    def test_edit_without_new_secret_keeps_fingerprint_applied(self):
+        route = claude_adapter.claude_route_create(self.create_body(secret_value="first"))["route"]
+        store = self.store()
+        store["appliedRouteId"] = route["id"]
+        store["appliedRouteConfigSha256"] = route["configSha256"]
+        claude_adapter._atomic_write(
+            self.routes_file, json.dumps(store, indent=2, ensure_ascii=False) + "\n"
+        )
+        edited = claude_adapter.claude_route_edit(
+            route["id"], self.edit_body(secret_value="", name="Renamed"))["route"]
+
+        self.assertEqual(edited["configSha256"], route["configSha256"])
+        self.assertEqual(claude_adapter.claude_credentials.resolve("BDF_GATE4A_API_KEY_REF"), "first")
+        self.assertNotIn("credentialRevision", edited)
+        after = self.store()
+        self.assertEqual(after["appliedRouteConfigSha256"], edited["configSha256"])
+
+    def test_shared_credential_rotation_invalidates_every_referencing_route(self):
+        first = claude_adapter.claude_route_create(
+            self.create_body(secret_value="", name="First"))["route"]
+        store = self.store()
+        store["appliedRouteId"] = first["id"]
+        store["appliedRouteConfigSha256"] = first["configSha256"]
+        claude_adapter._atomic_write(
+            self.routes_file, json.dumps(store, indent=2, ensure_ascii=False) + "\n"
+        )
+        second = claude_adapter.claude_route_create(
+            self.create_body(secret_value="second", name="Second"))["route"]
+        create_result = claude_adapter.claude_routes()
+        after_create = {route["id"]: route for route in create_result["routes"]}
+
+        self.assertNotEqual(create_result["appliedRouteConfigSha256"], after_create[first["id"]]["configSha256"])
+        self.assertNotEqual(after_create[first["id"]]["configSha256"], first["configSha256"])
+
+        before_edit = {route_id: route["configSha256"] for route_id, route in after_create.items()}
+        claude_adapter.claude_route_edit(
+            second["id"], self.edit_body(secret_value="third", name="Second"))
+        after_edit = {route["id"]: route for route in claude_adapter.claude_routes()["routes"]}
+        self.assertEqual(after_create[first["id"]]["credentialBackend"], "store")
+        self.assertTrue(after_create[first["id"]]["envVarManaged"])
+
+        self.assertNotEqual(after_edit[first["id"]]["configSha256"], before_edit[first["id"]])
+        self.assertNotEqual(after_edit[second["id"]]["configSha256"], before_edit[second["id"]])
+        self.assertEqual(
+            claude_adapter.claude_credentials.resolve("BDF_GATE4A_API_KEY_REF"), "third")
+
+    def test_failed_route_commit_restores_previous_stored_credential(self):
+        route = claude_adapter.claude_route_create(
+            self.create_body(secret_value="first"))["route"]
+        original_store = self.routes_file.read_bytes()
+        os.environ["BDF_GATE4A_API_KEY_REF"] = "process-before"
+
+        with patch.object(claude_adapter.claude_envvars, "user_env_exists", return_value=True), \
+                patch.object(claude_adapter.claude_envvars, "user_env_get", return_value="legacy-env"), \
+                patch.object(claude_adapter.claude_envvars, "delete_user_env",
+                             side_effect=lambda name: os.environ.pop(name, None)), \
+                patch.object(claude_adapter, "_commit_store_and_activity",
+                             side_effect=HTTPException(500, "simulated route commit failure")):
+            with self.assertRaises(HTTPException):
+                claude_adapter.claude_route_edit(
+                    route["id"], self.edit_body(secret_value="second"))
+
+        self.assertEqual(self.routes_file.read_bytes(), original_store)
+        self.assertEqual(claude_adapter.claude_credentials.resolve("BDF_GATE4A_API_KEY_REF"), "first")
+        claude_adapter.claude_envvars.set_user_env.assert_called_with(
+            "BDF_GATE4A_API_KEY_REF", "legacy-env")
+
+        self.assertEqual(os.environ["BDF_GATE4A_API_KEY_REF"], "process-before")
+
+    def test_revision_generation_failure_does_not_replace_credential(self):
+        route = claude_adapter.claude_route_create(
+            self.create_body(secret_value="first"))["route"]
+        original_store = self.routes_file.read_bytes()
+
+        with patch.object(claude_adapter.secrets, "token_hex", side_effect=OSError("rng failed")):
+            with self.assertRaises(OSError):
+                claude_adapter.claude_route_edit(
+                    route["id"], self.edit_body(secret_value="second"))
+
+        self.assertEqual(self.routes_file.read_bytes(), original_store)
+        self.assertEqual(claude_adapter.claude_credentials.resolve("BDF_GATE4A_API_KEY_REF"), "first")
+
+
+    def test_shared_reference_migration_prefers_existing_stored_credential(self):
+        target = claude_adapter.claude_route_create(
+            self.create_body(ref="BDF_GATE4A_TOKEN_REF", name="Target"))["route"]
+        env_route = claude_adapter.claude_route_create(
+            self.create_body(name="Env"))["route"]
+        stored = claude_adapter.claude_route_create(
+            self.create_body(secret_value="stored-key", name="Stored"))["route"]
+        store = self.store()
+        store["routes"] = [
+            dict(route, credentialBackend="env", envVarManaged=False)
+            if route["id"] == env_route["id"]
+            else route
+            for route in store["routes"]
+        ]
+        store["routes"] = [
+            {key: value for key, value in route.items() if key != "credentialRevision"}
+            if route["id"] == env_route["id"]
+            else route
+            for route in store["routes"]
+        ]
+        claude_adapter._atomic_write(
+            self.routes_file, json.dumps(store, indent=2, ensure_ascii=False) + "\n"
+        )
+        stored_view = next(
+            route for route in claude_adapter.claude_routes()["routes"] if route["id"] == stored["id"]
+        )
+
+        edited = claude_adapter.claude_route_edit(
+            target["id"], self.edit_body(ref="BDF_GATE4A_API_KEY_REF", name="Target"))["route"]
+
+        self.assertEqual(edited["credentialBackend"], "store")
+        self.assertTrue(edited["envVarManaged"])
+        self.assertEqual(edited["configSha256"], stored_view["configSha256"])
+
+    def test_credential_store_failure_restores_state_and_fails_save(self):
+        route = claude_adapter.claude_route_create(
+            self.create_body(secret_value="first"))["route"]
+        original_store = self.routes_file.read_bytes()
+
+        def partial_store(ref, value):
+            claude_adapter.claude_credentials.store(ref, value)
+            raise OSError("simulated credential write failure")
+
+        with patch.object(claude_adapter, "_store_route_credential", side_effect=partial_store):
+            with self.assertRaises(HTTPException) as ctx:
+                claude_adapter.claude_route_edit(
+                    route["id"], self.edit_body(secret_value="second"))
+
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertEqual(self.routes_file.read_bytes(), original_store)
+        self.assertEqual(
+            claude_adapter.claude_credentials.resolve("BDF_GATE4A_API_KEY_REF"), "first")
 
     def test_delete_managed_unreferenced_removes_store_entry(self):
         route = claude_adapter.claude_route_create(self.create_body(secret_value="sk-test"))["route"]

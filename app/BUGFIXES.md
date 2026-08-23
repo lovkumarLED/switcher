@@ -18,6 +18,13 @@ Copy this block into Entries when a fix lands:
 
 ## Entries
 
+### 2026-08-24 - Editing an applied Claude route's API key did not expose Apply route
+
+- **Symptom:** Saving a replacement API key showed the "changes are not applied" toast, but the route card still said "Applied" and kept the Apply route button disabled. Editing the context-window setting correctly exposed the button.
+- **Root cause:** Applied state compared a route fingerprint containing the endpoint, model/settings, auth strategy, and credential reference name. Replacing the secret stored under the same reference changed none of those fields, so the UI received the same fingerprint and rendered the stale applied state.
+- **Fix:** `claude_adapter.py` now assigns a random, non-secret credential revision after each successful stored-key/token write and includes that revision in the canonical configuration fingerprint. The revision propagates to every route sharing that credential reference, and credential/environment state rolls back if route metadata cannot commit. The internal revision is omitted from API route views; leaving the secret field blank preserves the prior revision and applied state, while legacy routes without a revision retain their exact pre-upgrade fingerprint.
+- **Verified:** Video reproduction was matched by isolated temp-profile tests: a replacement key now changes `configSha256` while `appliedRouteConfigSha256` stays at the last applied value, causing the existing UI contract to show "Changes not applied" and enable Apply route. Additional regressions cover blank-key edits, shared references with conflicting legacy metadata, partial credential-write failure, failed metadata-commit rollback (encrypted store, registry, and process environment), RNG failure before writes, legacy fingerprint compatibility, and secret/revision response redaction.
+
 ### 2026-08-23 - install.bat put the Switcher shortcut on an invisible desktop (OneDrive redirection)
 
 - **Symptom:** After running `install.bat`, no "Switcher" icon appeared on the desktop even though the script said "Shortcut created". (Also: a copy of `start.bat` placed on the desktop did nothing when double-clicked.)

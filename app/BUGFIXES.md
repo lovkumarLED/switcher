@@ -18,6 +18,13 @@ Copy this block into Entries when a fix lands:
 
 ## Entries
 
+### 2026-08-24 - Claude Code Apply left every route card pending
+
+- **Symptom:** After editing a Claude Code route and clicking "Apply route", the card stayed on "Changes not applied" instead of changing to the applied state. The same failure affected every Claude Code route card; KiloCode and OpenCode use different apply engines.
+- **Root cause:** The shared production routing core called PowerShell's Get-FileHash during Apply and Restore. The app launches that script with -NoProfile, where the cmdlet was unavailable, so Apply exited before the adapter could commit the route as applied.
+- **Fix:** app/engine/claude-code/claude-routing-core.psm1 now computes SHA-256 values through .NET's System.Security.Cryptography.SHA256 directly, removing the module-dependent Get-FileHash calls from the shared Apply/Restore path.
+- **Verified:** The real production Apply regression now passes; the complete Claude Apply/Restore class passes 11/11, including sequential application of multiple routes, and the generated target, manifest, and applied-route state are validated.
+
 ### 2026-08-24 - Editing a Claude route API key did not require reapplying the route
 
 - **Symptom:** Editing an existing route's API key saved the new value, but the card still showed "Route applied" instead of "Apply route". Claude Code therefore kept the previously generated environment until another route setting changed.

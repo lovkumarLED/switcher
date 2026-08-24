@@ -11,6 +11,13 @@ $script:CLAUDE_ROUTING_CORE_VERSION = "0.3.0"
 
 function Fail { param([string]$Reason) throw $Reason }
 function Get-Canonical { param([string]$Path) [IO.Path]::GetFullPath($Path) }
+function Get-ClaudeSha256 {
+    param([Parameter(Mandatory=$true)][string]$Path)
+    $hasher=[Security.Cryptography.SHA256]::Create()
+    try{
+        return ([BitConverter]::ToString($hasher.ComputeHash([IO.File]::ReadAllBytes($Path)))).Replace("-","").ToLowerInvariant()
+    }finally{$hasher.Dispose()}
+}
 function Assert-NoReparseComponent { param([string]$Path,[string]$Boundary)
     $boundaryPrefix=$Boundary.TrimEnd('\')+'\'; if(!$Path.StartsWith($boundaryPrefix,[StringComparison]::OrdinalIgnoreCase)-and $Path-cne $Boundary){Fail "physical path boundary violation"}
     $cursor=$Boundary
@@ -640,7 +647,7 @@ function Invoke-ClaudeRoutingApply {
         Assert-SettingsTextPreserved -Before $settingsDoc.RawText -After $newText -Edits $allEdits
         $tempObject=ConvertFrom-SettingsText $newText "surgical output"
         Verify-Contract $tempObject $routeDoc.Object $auth $unsupported
-        $preHash=((Get-FileHash -LiteralPath $script:SettingsPath -Algorithm SHA256).Hash).ToLowerInvariant()
+        $preHash=Get-ClaudeSha256 -Path $script:SettingsPath
         $stage="TRANSACTION"; $dir=Split-Path $script:SettingsPath -Parent; $backupDir=Join-Path $dir "backup"; if(!(Test-Path -LiteralPath $backupDir -PathType Container)){New-Item -ItemType Directory -Path $backupDir -Force|Out-Null}; $script:backupPath=Join-Path $backupDir ("settings.backup."+[DateTime]::UtcNow.ToString("yyyyMMddHHmmssfff")+"."+[guid]::NewGuid().ToString("N")+".json"); [IO.File]::Copy($script:SettingsPath,$script:backupPath,$false)
         if($TestFailureStage-eq "AfterBackup"){Fail "synthetic failure after backup"}
         $tempPath=Join-Path $dir (".bdf-transaction-"+[guid]::NewGuid().ToString("N")+".tmp")
@@ -654,10 +661,10 @@ function Invoke-ClaudeRoutingApply {
         if($TestFailureStage-in @("AfterRecoveryCopy","AfterRecoveryReplace")){Fail "synthetic failure to reach recovery"}
         $stage="POST-WRITE VERIFICATION"; $final=Read-SettingsDocument $script:SettingsPath
         Verify-Contract $final.ParsedObject $routeDoc.Object $auth $unsupported
-        $backupSha256=((Get-FileHash -LiteralPath $script:backupPath -Algorithm SHA256).Hash).ToLowerInvariant()
-        $postHash=((Get-FileHash -LiteralPath $script:SettingsPath -Algorithm SHA256).Hash).ToLowerInvariant()
+        $backupSha256=Get-ClaudeSha256 -Path $script:backupPath
+        $postHash=Get-ClaudeSha256 -Path $script:SettingsPath
         if($JsonOutput){
-            $meta=[ordered]@{ok=$true;backupName=[IO.Path]::GetFileName($script:backupPath);backupSha256=$backupSha256;preWriteTargetSha256=$preHash;postWriteTargetSha256=$postHash;coreVersion=$script:CLAUDE_ROUTING_CORE_VERSION;schemaIdentity=((Get-FileHash -LiteralPath $script:SchemaPath -Algorithm SHA256).Hash).ToLowerInvariant()}
+            $meta=[ordered]@{ok=$true;backupName=[IO.Path]::GetFileName($script:backupPath);backupSha256=$backupSha256;preWriteTargetSha256=$preHash;postWriteTargetSha256=$postHash;coreVersion=$script:CLAUDE_ROUTING_CORE_VERSION;schemaIdentity=(Get-ClaudeSha256 -Path $script:SchemaPath)}
             [Console]::Out.WriteLine(($meta|ConvertTo-Json -Compress))
             exit 0
         }
@@ -695,7 +702,7 @@ function Invoke-ClaudeRoutingRestore {
 
     try{
         if(!(Test-Path -LiteralPath $backupPath -PathType Leaf)){Fail "backup missing"}
-        if($ExpectedBackupSha256-and ((Get-FileHash -LiteralPath $backupPath -Algorithm SHA256).Hash)-ine $ExpectedBackupSha256){Fail "backup hash mismatch"}
+        if($ExpectedBackupSha256-and (Get-ClaudeSha256 -Path $backupPath)-ine $ExpectedBackupSha256){Fail "backup hash mismatch"}
         if($TargetBindingSha256){
             $bindingText=$script:SettingsPath.ToLowerInvariant().Replace('\','/').TrimEnd('/')
             $binding=[Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($bindingText))
@@ -721,9 +728,9 @@ function Invoke-ClaudeRoutingRestore {
         $stage="RESTORE VERIFICATION"
         $final=Read-Json $script:SettingsPath "restored target"
         $a=[IO.File]::ReadAllBytes($backupPath);$b=[IO.File]::ReadAllBytes($script:SettingsPath);if((Convert-Semantic $a)-cne(Convert-Semantic $b)){Fail "restore bytes differ"}
-        $restoredSha=((Get-FileHash -LiteralPath $script:SettingsPath -Algorithm SHA256).Hash).ToLowerInvariant()
+        $restoredSha=Get-ClaudeSha256 -Path $script:SettingsPath
         if($JsonOutput){
-            $meta=[ordered]@{ok=$true;restoredTargetSha256=$restoredSha;coreVersion=$script:CLAUDE_ROUTING_CORE_VERSION;schemaIdentity=((Get-FileHash -LiteralPath $schemaPath -Algorithm SHA256).Hash).ToLowerInvariant()}
+            $meta=[ordered]@{ok=$true;restoredTargetSha256=$restoredSha;coreVersion=$script:CLAUDE_ROUTING_CORE_VERSION;schemaIdentity=(Get-ClaudeSha256 -Path $schemaPath)}
             [Console]::Out.WriteLine(($meta|ConvertTo-Json -Compress))
             exit 0
         }

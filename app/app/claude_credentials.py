@@ -17,6 +17,7 @@ fixtures.
 
 import base64
 import ctypes
+import hashlib
 import json
 from ctypes import wintypes
 from pathlib import Path
@@ -125,3 +126,17 @@ def has(name):
 
 def list_names():
     return sorted(_read_document()["entries"].keys())
+
+
+def revision(name):
+    """Return a non-secret revision for the encrypted credential entry."""
+    if not name:
+        return None
+    encoded = _read_document()["entries"].get(name)
+    if not encoded:
+        return None
+    try:
+        ciphertext = base64.b64decode(encoded, validate=True)
+    except (ValueError, TypeError):
+        return None
+    return hashlib.sha256(ciphertext).hexdigest()

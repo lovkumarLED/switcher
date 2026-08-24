@@ -151,7 +151,10 @@ def _route_view(route):
     return dict(route, configSha256=_fingerprint(route), effectiveModel=_effective_model(route))
 
 
-def _fingerprint(route):
+def _fingerprint(route, include_credential_revision=True):
+    credential_revision = None
+    if include_credential_revision and route.get("credentialBackend") == "store":
+        credential_revision = claude_credentials.revision(route.get("secretEnvRef"))
     payload = {
         "baseUrl": route["baseUrl"],
         "authKind": route["authKind"],
@@ -164,8 +167,26 @@ def _fingerprint(route):
         "modelRoles": route.get("modelRoles") or {},
         "restrictModelPicker": route.get("restrictModelPicker", True),
     }
+    if include_credential_revision:
+        payload["credentialRevision"] = credential_revision
     text = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _migrate_legacy_applied_fingerprint(store):
+    route = _route_by_id(store, store.get("appliedRouteId"))
+    if route is None:
+        return store
+    legacy = _fingerprint(route, include_credential_revision=False)
+    if store.get("appliedRouteConfigSha256") != legacy:
+        return store
+    current = _fingerprint(route)
+    if current == legacy:
+        return store
+    migrated = dict(store)
+    migrated["appliedRouteConfigSha256"] = current
+    _atomic_write(CLAUDE_ROUTES_FILE, json.dumps(migrated, indent=2, ensure_ascii=False) + "\n")
+    return migrated
 
 
 def _check_origin(request: Request):
@@ -744,7 +765,7 @@ def claude_scan():
 def claude_routes():
     with _lock:
         root = get_profile_root()
-        store = _read_store()
+        store = _migrate_legacy_applied_fingerprint(_read_store())
         views = [_route_view(route) for route in store.get("routes", [])]
         if _locked(root):
             return {"routes": views, "appliedRouteId": store.get("appliedRouteId"), "appliedRouteConfigSha256": store.get("appliedRouteConfigSha256"), "routesRevision": _routes_revision(store), "realTargetLocked": True}
@@ -761,7 +782,7 @@ def claude_routes():
 def claude_route_detail(route_id: str):
     with _lock:
         root = get_profile_root()
-        store = _read_store()
+        store = _migrate_legacy_applied_fingerprint(_read_store())
         route = _route_by_id(store, route_id)
         if route is None:
             raise HTTPException(404, "That route doesn't exist anymore. Refresh the page.")
@@ -868,6 +889,7 @@ def claude_route_edit(route_id: str, body: RouteEditBody):
         store = _read_store()
         if _routes_revision(store) != body.expectedRoutesRevision:
             raise HTTPException(409, "The saved routes changed outside the app.")
+        store = _migrate_legacy_applied_fingerprint(store)
         existing = _route_by_id(store, route_id)
         if existing is None:
             raise HTTPException(404, "That route doesn't exist anymore. Refresh the page.")

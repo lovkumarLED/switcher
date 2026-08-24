@@ -1241,12 +1241,31 @@ class EnvVarLifecycleTests(ClaudeAdapterBase):
         claude_adapter.claude_envvars.delete_user_env.assert_called_once_with("BDF_GATE4A_API_KEY_REF")
 
     def test_edit_updates_store_value(self):
-        claude_adapter.claude_route_create(self.create_body(secret_value="first"))
+        created = claude_adapter.claude_route_create(self.create_body(secret_value="first"))["route"]
         edited = claude_adapter.claude_route_edit(
-            claude_adapter.claude_routes()["routes"][0]["id"], self.edit_body(secret_value="second"))["route"]
+            created["id"], self.edit_body(secret_value="second"))["route"]
         self.assertEqual(edited["credentialBackend"], "store")
         self.assertTrue(edited["envVarManaged"])
         self.assertEqual(claude_adapter.claude_credentials.resolve("BDF_GATE4A_API_KEY_REF"), "second")
+
+    def test_editing_api_key_changes_route_fingerprint_for_reapply(self):
+        created = claude_adapter.claude_route_create(self.create_body(secret_value="first"))["route"]
+        edited = claude_adapter.claude_route_edit(
+            created["id"], self.edit_body(secret_value="second"))["route"]
+        self.assertNotEqual(edited["configSha256"], created["configSha256"])
+
+    def test_legacy_applied_fingerprint_is_migrated_before_key_edits(self):
+        created = claude_adapter.claude_route_create(self.create_body(secret_value="first"))["route"]
+        legacy_fingerprint = claude_adapter._fingerprint(created, include_credential_revision=False)
+        state = self.store()
+        state["appliedRouteId"] = created["id"]
+        state["appliedRouteConfigSha256"] = legacy_fingerprint
+        claude_adapter._atomic_write(self.routes_file, json.dumps(state) + "\n")
+
+        result = claude_adapter.claude_routes()
+
+        self.assertEqual(result["appliedRouteConfigSha256"], created["configSha256"])
+        self.assertEqual(self.store()["appliedRouteConfigSha256"], created["configSha256"])
 
     def test_delete_managed_unreferenced_removes_store_entry(self):
         route = claude_adapter.claude_route_create(self.create_body(secret_value="sk-test"))["route"]

@@ -18,6 +18,13 @@ Copy this block into Entries when a fix lands:
 
 ## Entries
 
+### 2026-08-24 - Editing a Claude route API key did not require reapplying the route
+
+- **Symptom:** Editing an existing route's API key saved the new value, but the card still showed "Route applied" instead of "Apply route". Claude Code therefore kept the previously generated environment until another route setting changed.
+- **Root cause:** `configSha256` fingerprinted the credential reference name but not a revision of the encrypted credential value, so replacing a key produced the same applied fingerprint. Existing applied routes also had fingerprints in the previous format.
+- **Fix:** `app/app/claude_credentials.py` now exposes a non-secret SHA-256 revision of the encrypted credential ciphertext. `app/app/claude_adapter.py` includes that revision in route fingerprints and migrates legacy applied fingerprints before route reads or edits; the secret value never enters the fingerprint or API response.
+- **Verified:** Temporary-profile regression coverage confirms `first` → `second` API-key edits change the route fingerprint and legacy applied state migrates cleanly; focused backend tests pass 15/15, frontend contracts pass 197/197, and the live route API reports the current applied route consistently after server restart.
+
 ### 2026-08-23 - install.bat put the Switcher shortcut on an invisible desktop (OneDrive redirection)
 
 - **Symptom:** After running `install.bat`, no "Switcher" icon appeared on the desktop even though the script said "Shortcut created". (Also: a copy of `start.bat` placed on the desktop did nothing when double-clicked.)

@@ -125,7 +125,7 @@ def update_provider(provider_id: str, body: ProviderBody):
     models = agentstore.read_models(agent_dir, provider_id, format_id=reasoning_format)
     if body.models is not None:
         models = agentstore.write_models(
-            agent_dir, provider_id, [m.model_dump() for m in body.models], format_id=reasoning_format
+            agent_dir, provider_id, [m.model_dump() for m in body.models], format_id=reasoning_format, replace=True
         )
     return _public(provider, agentstore.get_active_providers(agent_dir, existing_only=True), models)
 

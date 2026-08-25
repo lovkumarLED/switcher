@@ -121,10 +121,26 @@ test("provider submit is gated to the final step", () => {
 
 test("provider review excludes the raw key", () => {
   const review = providerReviewData({ name: "Local", baseUrl: "https://example.test/v1", reasoningFormat: "openai", models: [{ model: "gpt" }], apiKey: "secret" });
-  assert.deepEqual(review, { name: "Local", baseUrl: "https://example.test/v1", format: "openai", models: "gpt", key: "Present" });
+  assert.deepEqual(review, { name: "Local", id: "local", baseUrl: "https://example.test/v1", sdk: "@ai-sdk/openai-compatible", format: "openai", models: ["gpt"], key: "Present" });
   assert.equal(JSON.stringify(review).includes("secret"), false);
 });
 
+test("provider edit review uses the detail-style summary and visible test state", () => {
+  const source = readFileSync(new URL("../assets/js/pages/providers.js", import.meta.url), "utf8");
+  assert.match(source, /provider-review-card/);
+  assert.match(source, /provider-review-grid/);
+  assert.match(source, /provider-review-field/);
+  assert.match(source, /provider-test-status/);
+  assert.match(source, /data-state/);
+});
+
+test("editing a saved provider replaces the preset chooser with an overview", () => {
+  const source = readFileSync(new URL("../assets/js/pages/providers.js", import.meta.url), "utf8");
+  assert.match(source, /provider-edit-intro/);
+  assert.match(source, /provider \? "Overview" : "Choose"/);
+  assert.match(source, /const presetField = provider \? "" :/);
+  assert.match(source, /preset\?\.addEventListener/);
+});
 test("saved reduce preference overrides operating system motion", () => {
   assert.equal(motionIsReduced("reduce", false), true);
   assert.equal(motionIsReduced("system", true), true);

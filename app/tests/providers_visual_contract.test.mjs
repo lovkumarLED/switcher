@@ -52,6 +52,11 @@ test("provider editor actions use a rounded theme-aware rail", () => {
   assert.match(shellCssSource, /\.provider-dialog \.dialog__actions\s*\{[^}]*border:\s*1px solid var\(--border\)/);
 });
 
+test("editing a saved provider uses a polished overview surface", () => {
+  assert.match(providersSource, /provider-edit-intro/);
+  assert.match(shellCssSource, /\.provider-edit-intro\s*\{/);
+  assert.match(shellCssSource, /\.provider-edit-intro__facts/);
+});
 test("overview surfaces share restrained control-room accent cards across agents", () => {
   for (const tone of ["relay", "metric", "chart", "usage"]) assert.match(overviewSource, new RegExp(`control-room-card--${tone}`));
   assert.match(overviewSource, /<article class="activity-panel activity-log-card control-room-card control-room-card--recent recent-card overview-recent-card">/);

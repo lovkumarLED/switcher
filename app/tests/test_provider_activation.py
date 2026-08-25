@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -34,3 +35,26 @@ class ProviderActivationTests(unittest.TestCase):
                 providers.activate("nope")
             with self.assertRaises(HTTPException):
                 providers.deactivate("nope")
+
+    def test_edit_provider_replaces_models_removed_from_the_form(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(agentstore, "require_agent_dir", return_value=Path(folder)):
+            provider = providers.create_provider(providers.ProviderBody(
+                name="LiteLLM",
+                baseUrl="http://localhost:4000/v1",
+                models=[
+                    providers.ModelItem(model="deepseek-v4-flash-0731", name="DeepSeek V4 Flash"),
+                    providers.ModelItem(model="deepseek-v4-flash-free", name="DeepSeek V4 Flash Free"),
+                    providers.ModelItem(model="gemini-3.5-flash-lite", name="Gemini 3.5 Flash Lite"),
+                ],
+                activate=True,
+            ))
+
+            updated = providers.update_provider(provider["id"], providers.ProviderBody(
+                name="LiteLLM",
+                baseUrl="http://localhost:4000/v1",
+                models=[providers.ModelItem(model="deepseek-v4-flash-0731", name="DeepSeek V4 Flash")],
+            ))
+
+            self.assertEqual([model["model"] for model in updated["models"]], ["deepseek-v4-flash-0731"])
+            saved = json.loads(agentstore.models_file(Path(folder), provider["id"]).read_text(encoding="utf-8"))
+            self.assertEqual(set(saved["models"]), {"deepseek-v4-flash-0731"})

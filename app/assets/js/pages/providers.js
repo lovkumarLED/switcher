@@ -46,7 +46,16 @@ export function providerState(provider, activeProvider) {
 
 export const nextProviderStep = (step, delta) => Math.max(0, Math.min(4, step + delta));
 export const canSubmitProviderStep = step => step === 4;
-export const providerReviewData = value => ({ name: value.name, baseUrl: value.baseUrl, format: value.reasoningFormat || "opencode", models: (value.models || []).map(model => model.model).join(", ") || "None", key: value.apiKey ? "Present" : "Not provided" });
+const providerSlug = name => (name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+export const providerReviewData = value => ({
+  name: value.name,
+  id: providerSlug(value.name),
+  baseUrl: value.baseUrl,
+  sdk: value.npm || "@ai-sdk/openai-compatible",
+  format: value.reasoningFormat || "opencode",
+  models: (value.models || []).map(model => model.model).filter(Boolean),
+  key: value.apiKey ? "Present" : "Not provided",
+});
 export async function switchProviderAgent(apiClient, nextAgent, currentAgent) {
   if (nextAgent === currentAgent) return false;
   if (nextAgent === "claude-code") await apiClient.claudeConnect();
@@ -84,7 +93,15 @@ function details(provider, trigger) {
 function providerForm(provider) {
   const models = (provider?.models || []).map(model => model.model).join("\n");
   const formatOptions = (store.get().formats.length ? store.get().formats : [{ id: "opencode", label: "OpenCode" }, { id: "openai", label: "OpenAI" }, { id: "claude", label: "Claude-style" }, { id: "gemini", label: "Gemini-style" }, { id: "none", label: "No reasoning" }]).map(format => `<option value="${escapeHtml(format.id)}" ${format.id === (provider?.reasoningFormat || "opencode") ? "selected" : ""}>${escapeHtml(format.label)}</option>`).join("");
-  return `<div class="segment" aria-label="Provider setup steps"><button type="button" aria-pressed="true">Choose</button><button type="button">Configure</button><button type="button">Models</button><button type="button">Test</button><button type="button">Save</button></div><form id="providerForm" class="stack" style="margin-top:20px"><div class="field"><label for="providerPreset">Provider preset</label><select id="providerPreset">${Object.keys(presets).map(name => `<option ${provider ? "" : name === "Custom" ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></div><div class="field"><label for="providerName">Name</label><input id="providerName" required value="${escapeHtml(provider?.name || "")}" autocomplete="off"></div><div class="field"><label for="providerUrl">Base URL</label><input id="providerUrl" required value="${escapeHtml(provider?.baseUrl || "")}" placeholder="https://api.example.com/v1"></div><div class="field"><label for="providerSdk">SDK package</label><input id="providerSdk" list="providerSdkOptions" value="${escapeHtml(provider?.npm || "@ai-sdk/openai-compatible")}" placeholder="@ai-sdk/openai-compatible" autocomplete="off"><datalist id="providerSdkOptions">${SDK_OPTIONS.map(option => `<option value="${escapeHtml(option.npm)}">${escapeHtml(option.label)}</option>`).join("")}</datalist></div><div class="field"><label for="providerKey">API key ${provider?.hasKey ? '<span class="muted">(leave empty to keep existing)</span>' : ""}</label><input id="providerKey" type="password" autocomplete="new-password"><p class="field-note">Keys are never returned or displayed after saving.</p></div><div class="field"><label for="providerFormat">Reasoning format</label><select id="providerFormat">${formatOptions}</select></div><div class="field"><label for="providerModels">Models <span class="muted">(one ID per line)</span></label><textarea id="providerModels" placeholder="provider/model-id">${escapeHtml(models)}</textarea></div><p id="providerFormMessage" class="field-error" role="alert"></p></form>`;
+  const presetField = provider ? "" : `<div class="field"><label for="providerPreset">Provider preset</label><select id="providerPreset">${Object.keys(presets).map(name => `<option ${name === "Custom" ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></div>`;
+  const firstStepLabel = provider ? "Overview" : "Choose";
+  return `<div class="segment" aria-label="Provider setup steps"><button type="button" aria-pressed="true">${firstStepLabel}</button><button type="button">Configure</button><button type="button">Models</button><button type="button">Test</button><button type="button">Save</button></div><form id="providerForm" class="stack" style="margin-top:20px">${presetField}<div class="field"><label for="providerName">Name</label><input id="providerName" required value="${escapeHtml(provider?.name || "")}" autocomplete="off"></div><div class="field"><label for="providerUrl">Base URL</label><input id="providerUrl" required value="${escapeHtml(provider?.baseUrl || "")}" placeholder="https://api.example.com/v1"></div><div class="field"><label for="providerSdk">SDK package</label><input id="providerSdk" list="providerSdkOptions" value="${escapeHtml(provider?.npm || "@ai-sdk/openai-compatible")}" placeholder="@ai-sdk/openai-compatible" autocomplete="off"><datalist id="providerSdkOptions">${SDK_OPTIONS.map(option => `<option value="${escapeHtml(option.npm)}">${escapeHtml(option.label)}</option>`).join("")}</datalist></div><div class="field"><label for="providerKey">API key ${provider?.hasKey ? '<span class="muted">(leave empty to keep existing)</span>' : ""}</label><input id="providerKey" type="password" autocomplete="new-password"><p class="field-note">Keys are never returned or displayed after saving.</p></div><div class="field"><label for="providerFormat">Reasoning format</label><select id="providerFormat">${formatOptions}</select></div><div class="field"><label for="providerModels">Models <span class="muted">(one ID per line)</span></label><textarea id="providerModels" placeholder="provider/model-id">${escapeHtml(models)}</textarea></div><p id="providerFormMessage" class="field-error" role="alert"></p></form>`;
+}
+
+function providerEditIntro(provider) {
+  const modelCount = provider.models?.length || 0;
+  const modelLabel = `${modelCount} model${modelCount === 1 ? "" : "s"} configured`;
+  return `<div class="provider-edit-intro"><p class="provider-edit-intro__eyebrow">Saved provider</p><h2>Editing ${escapeHtml(provider.name)}</h2><p>Update this provider’s connection, credentials, or models. Its provider ID stays tied to this saved route.</p><div class="provider-edit-intro__facts"><div><span>Provider ID</span><strong class="mono">${escapeHtml(provider.id)}</strong></div><div><span>Models</span><strong>${modelLabel}</strong></div></div></div>`;
 }
 
 export function openProviderDialog(provider = null, trigger = document.activeElement) {
@@ -94,21 +111,87 @@ export function openProviderDialog(provider = null, trigger = document.activeEle
   dialog.classList.add("provider-dialog");
   dialog.closest(".dialog-backdrop")?.classList.add("provider-panel-backdrop");
   const form = dialog.querySelector("#providerForm"), fields = [...form.querySelectorAll(":scope > .field")];
-  const groups = [[fields[0]], fields.slice(1, 6), [fields[6]], [], []];
-  const panelNames = ["Choose a preset", "Configure connection", "Choose models", "Test connection", "Review and save"];
-  const panels = groups.map((items, index) => { const panel = document.createElement("section"); panel.className = "provider-step"; panel.dataset.providerPanel = index; panel.setAttribute("aria-label", panelNames[index]); items.forEach(item => panel.append(item)); if (index === 3) panel.innerHTML = '<p>Use Test connection below. A successful test is recommended, not required.</p>'; if (index === 4) panel.innerHTML = '<p>Review the provider details, then save it. Saving does not activate it.</p>'; form.insertBefore(panel, form.querySelector("#providerFormMessage")); return panel; });
+  const groups = provider ? [[], fields.slice(0, 5), [fields[5]], [], []] : [[fields[0]], fields.slice(1, 6), [fields[6]], [], []];
+  const panelNames = [provider ? "Provider overview" : "Choose a preset", "Configure connection", "Choose models", "Test connection", "Review and save"];
+  const panels = groups.map((items, index) => {
+    const panel = document.createElement("section");
+    panel.className = "provider-step";
+    panel.dataset.providerPanel = index;
+    panel.setAttribute("aria-label", panelNames[index]);
+    items.forEach(item => panel.append(item));
+    if (index === 0 && provider) panel.innerHTML = providerEditIntro(provider);
+    if (index === 3) panel.innerHTML = '<p class="provider-step-test-note">Use Test connection below. A successful test is recommended, not required.</p><div id="providerTestStatus" class="provider-test-status" data-state="idle" role="status" aria-live="polite"><span class="provider-test-status__icon" aria-hidden="true">○</span><span data-provider-test-message>Not tested yet.</span></div>';
+    if (index === 4) panel.innerHTML = '<p class="provider-step-test-note">Review these values before saving. Your API key is never displayed.</p>';
+    form.insertBefore(panel, form.querySelector("#providerFormMessage"));
+    return panel;
+  });
   const footer = dialog.querySelector(".dialog__actions");
   footer.insertAdjacentHTML("afterbegin", '<button class="button button--quiet" type="button" data-step-back>Back</button><button class="button button--primary" type="button" data-step-next>Next</button>');
   const preset = dialog.querySelector("#providerPreset");
-  preset.addEventListener("change", () => { const value = presets[preset.value]; if (!value) return; dialog.querySelector("#providerUrl").value = value.baseUrl; dialog.querySelector("#providerSdk").value = value.npm; dialog.querySelector("#providerFormat").value = value.reasoningFormat; if (!dialog.querySelector("#providerName").value && preset.value !== "Custom") dialog.querySelector("#providerName").value = preset.value; });
+  preset?.addEventListener("change", () => { const value = presets[preset.value]; if (!value) return; dialog.querySelector("#providerUrl").value = value.baseUrl; dialog.querySelector("#providerSdk").value = value.npm; dialog.querySelector("#providerFormat").value = value.reasoningFormat; if (!dialog.querySelector("#providerName").value && preset.value !== "Custom") dialog.querySelector("#providerName").value = preset.value; });
   const existingModels = provider?.models || [];
   const values = () => ({ name: dialog.querySelector("#providerName").value.trim(), baseUrl: dialog.querySelector("#providerUrl").value.trim(), npm: dialog.querySelector("#providerSdk").value.trim(), apiKey: dialog.querySelector("#providerKey").value.trim(), reasoningFormat: dialog.querySelector("#providerFormat").value, models: dialog.querySelector("#providerModels").value.split(/\r?\n/).map(model => model.trim()).filter(Boolean).map(model => { const existing = existingModels.find(item => item.model === model); return { model, name: existing?.name || "", thinking: existing?.thinking || [] }; }) });
-  dialog.querySelector("[data-test-form]").addEventListener("click", async () => { const value = values(); const message = dialog.querySelector("#providerFormMessage"); if (!value.baseUrl) { message.textContent = "Enter the base URL before testing."; return; } message.textContent = "Testing the endpoint…"; try { const result = await api.testProvider(provider && !value.apiKey ? { id: provider.id } : { baseUrl: value.baseUrl, apiKey: value.apiKey }); message.textContent = result.message || (result.ok ? "Connection passed." : "Connection failed."); } catch (error) { message.textContent = error.message; } });
+  const testStatus = dialog.querySelector("#providerTestStatus");
+  const setTestStatus = (state, text) => {
+    testStatus.dataset.state = state;
+    testStatus.querySelector(".provider-test-status__icon").textContent = state === "success" ? "✓" : state === "error" ? "!" : state === "testing" ? "…" : "○";
+    testStatus.querySelector("[data-provider-test-message]").textContent = text;
+  };
+  dialog.querySelector("[data-test-form]").addEventListener("click", async () => {
+    const value = values();
+    const message = dialog.querySelector("#providerFormMessage");
+    if (!value.baseUrl) {
+      const text = "Enter the base URL before testing.";
+      setTestStatus("error", text);
+      message.textContent = text;
+      return;
+    }
+    message.textContent = "";
+    setTestStatus("testing", "Testing the endpoint…");
+    try {
+      const result = await api.testProvider(provider && !value.apiKey ? { id: provider.id } : { baseUrl: value.baseUrl, apiKey: value.apiKey });
+      const text = result.message || (result.ok ? "Connection passed." : "Connection failed.");
+      setTestStatus(result.ok ? "success" : "error", text);
+      message.textContent = result.ok ? "" : text;
+    } catch (error) {
+      setTestStatus("error", error.message);
+      message.textContent = error.message;
+    }
+  });
   let step = 0, completed = 0;
   const stepButtons = [...dialog.querySelectorAll(".segment button")];
   const back = dialog.querySelector("[data-step-back]"), next = dialog.querySelector("[data-step-next]"), testButton = dialog.querySelector("[data-test-form]"), saveButton = dialog.querySelector("button[form='providerForm']");
-  const stepTargets = ["#providerPreset", "#providerName", "#providerModels", "[data-test-form]", "button[form='providerForm']"];
-  const renderReview = () => { const review = providerReviewData(values()); const panel = panels[4]; panel.replaceChildren(); const list = document.createElement("dl"); [["Name / ID", `${review.name} / ${review.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`], ["Base URL", review.baseUrl], ["Models", review.models], ["Reasoning format", review.format], ["API key", review.key]].forEach(([label, content]) => { const group = document.createElement("div"), term = document.createElement("dt"), detail = document.createElement("dd"); term.textContent = label; detail.textContent = content; group.append(term, detail); list.append(group); }); panel.append(list); };
+  const stepTargets = [provider ? "#providerName" : "#providerPreset", "#providerName", "#providerModels", "[data-test-form]", "button[form='providerForm']"];
+  const renderReview = () => {
+    const review = providerReviewData(values());
+    const panel = panels[4];
+    panel.replaceChildren();
+    const intro = document.createElement("p");
+    intro.className = "provider-step-test-note";
+    intro.textContent = "Confirm the connection details and model list before saving.";
+    const card = document.createElement("div");
+    card.className = "provider-review-card";
+    const list = document.createElement("dl");
+    list.className = "provider-review-grid";
+    [["Name / ID", `${review.name} / ${review.id}`], ["Base URL", review.baseUrl], ["SDK package", review.sdk], ["Models", review.models], ["Reasoning format", review.format], ["API key", review.key]].forEach(([label, content]) => {
+      const group = document.createElement("div");
+      group.className = "provider-review-field";
+      if (label === "Models") group.classList.add("provider-review-field--wide");
+      const term = document.createElement("dt");
+      term.textContent = label;
+      const detail = document.createElement("dd");
+      detail.className = "provider-review-value";
+      if (label === "Models") {
+        detail.classList.add("provider-review-models");
+        if (content.length) content.forEach(model => { const chip = document.createElement("span"); chip.className = "provider-review-model"; chip.textContent = model; detail.append(chip); });
+        else { detail.classList.add("is-empty"); detail.textContent = "None configured"; }
+      } else detail.textContent = content;
+      group.append(term, detail);
+      list.append(group);
+    });
+    card.append(list);
+    panel.append(intro, card);
+  };
   const setStep = (value, focusTarget = true) => { step = Math.max(0, Math.min(4, value)); if (step === 4) renderReview(); panels.forEach((panel, index) => { panel.hidden = index !== step; panel.querySelectorAll("input,select,textarea,button").forEach(control => control.disabled = index !== step); }); stepButtons.forEach((button, index) => { button.setAttribute("aria-pressed", String(index === step)); button.disabled = index > completed; }); back.hidden = step === 0; next.hidden = step === 4; testButton.hidden = step !== 3; saveButton.hidden = step !== 4; saveButton.disabled = !canSubmitProviderStep(step); if (focusTarget) dialog.querySelector(stepTargets[step])?.focus(); };
   const valid = () => { const value = values(); if (step === 1 && (!value.name || !value.baseUrl)) { dialog.querySelector("#providerFormMessage").textContent = "Enter a provider name and base URL."; return false; } return true; };
   stepButtons.forEach((button, index) => button.addEventListener("click", () => { if (index <= completed) setStep(index); }));

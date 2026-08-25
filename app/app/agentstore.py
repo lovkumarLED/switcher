@@ -390,13 +390,13 @@ def read_models(agent_dir, provider_id, profile=None, format_id=None):
     return result
 
 
-def write_models(agent_dir, provider_id, items, profile=None, format_id=None):
+def write_models(agent_dir, provider_id, items, profile=None, format_id=None, replace=False):
     fmt = resolve_format(format_id)
     path = models_file(agent_dir, provider_id, profile)
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = _read_json(path, {})
     _backup(path)
-    models = dict(existing.get("models") or {})
+    models = {} if replace else dict(existing.get("models") or {})
     for item in items or []:
         model_id = item.get("model")
         if not model_id:

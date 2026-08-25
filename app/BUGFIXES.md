@@ -18,6 +18,20 @@ Copy this block into Entries when a fix lands:
 
 ## Entries
 
+### 2026-08-25 - Provider edits did not remove deleted models from the build
+
+- **Symptom:** Removing a model in Edit provider showed a successful save, but Manage models and the next builder run still contained the deleted model.
+- **Root cause:** Provider updates reused the additive model writer used by Manage models, so the submitted model list was merged with the existing file instead of replacing it.
+- **Fix:** `agentstore.write_models` now supports explicit replace semantics, and provider PUT updates use `replace=True`; Manage models keeps its additive behavior. The provider wizard’s Save and Test steps now also use structured review data, a visible connection-test status indicator, and an edit overview instead of an irrelevant preset chooser.
+- **Verified:** Provider replacement regression coverage passes; the full Python suite passes 275/275 and the full frontend suite passes 201/201.
+
+### 2026-08-25 - Active profile accent rail crossed the rounded card border
+
+- **Symptom:** The purple rail on the Active profile card extended into the card’s rounded corners instead of following the border.
+- **Root cause:** The card intentionally uses `overflow: visible` so its profile menu can open below it. That bypassed the shared control-room card clipping, and the earlier rail inset did not provide an independent clipping boundary.
+- **Fix:** `settings-workspace.css` now insets the rail from the border and clips its pseudo-element to the matching rounded left corners, without clipping the profile menu.
+- **Verified:** The visual contract proves both behaviors: the menu remains unclipped and the rail has the inset, rounded geometry, and independent clip path.
+
 ### 2026-08-24 - Claude Code Apply left every route card pending
 
 - **Symptom:** After editing a Claude Code route and clicking "Apply route", the card stayed on "Changes not applied" instead of changing to the applied state. The same failure affected every Claude Code route card; KiloCode and OpenCode use different apply engines.

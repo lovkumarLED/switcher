@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { canSubmitProviderStep, nextProviderStep, providerReviewData } from "../assets/js/pages/providers.js";
+import { canSubmitProviderStep, nextProviderStep, providerReviewData, serializeProviderModels } from "../assets/js/pages/providers.js";
 import { motionIsReduced, sidebarBrandBurstPlan, startupAtmospherePose, startupPointerPose } from "../assets/js/core/motion.js";
 import { activityView } from "../assets/js/pages/activity.js";
 import { createCloseSettlement } from "../assets/js/core/dialog.js";
@@ -123,6 +123,20 @@ test("provider review excludes the raw key", () => {
   const review = providerReviewData({ name: "Local", baseUrl: "https://example.test/v1", reasoningFormat: "openai", models: [{ model: "gpt" }], apiKey: "secret" });
   assert.deepEqual(review, { name: "Local", id: "local", baseUrl: "https://example.test/v1", sdk: "@ai-sdk/openai-compatible", format: "openai", models: ["gpt"], key: "Present" });
   assert.equal(JSON.stringify(review).includes("secret"), false);
+});
+
+test("provider model serialization keeps only the models still present in the editor", () => {
+  const existing = [
+    { model: "deepseek-v4-flash-0731", name: "DeepSeek V4 Flash", thinking: ["high"] },
+    { model: "deepseek-v4-flash-free", name: "DeepSeek V4 Flash Free", thinking: ["default"] },
+    { model: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", thinking: [] },
+  ];
+  const serialized = serializeProviderModels(["deepseek-v4-flash-0731", "gemini-3.5-flash-lite"], existing);
+  assert.deepEqual(serialized, [
+    { model: "deepseek-v4-flash-0731", name: "DeepSeek V4 Flash", thinking: ["high"] },
+    { model: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", thinking: [] },
+  ]);
+  assert.equal(serialized.some(item => item.model === "deepseek-v4-flash-free"), false);
 });
 
 test("provider edit review uses the detail-style summary and visible test state", () => {

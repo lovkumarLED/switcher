@@ -114,6 +114,15 @@ test("edit action opens the pre-filled edit wizard", () => {
   assert.match(providersSource, /openProviderDialog\(provider, trigger\)/);
 });
 
+test("provider editor presents models as removable compact blocks", () => {
+  assert.match(providersSource, /provider-model-cards/);
+  assert.match(providersSource, /data-provider-model-remove/);
+  assert.match(providersSource, /data-add-provider-model/);
+  assert.match(providersSource, /outerHTML = providerModelField\(provider\)/);
+  assert.match(shellCssSource, /\.provider-model-card\s*\{/);
+  assert.match(shellCssSource, /\.provider-model-cards\s*\{[^}]*overflow-y:\s*auto/is);
+});
+
 test("details dialog is read-only without an edit button", () => {
   assert.doesNotMatch(providersSource, /data-edit-provider/);
   assert.match(providersSource, /data-dialog-close>Close<\/button>/);

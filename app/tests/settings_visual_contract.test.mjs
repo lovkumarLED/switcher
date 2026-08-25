@@ -57,8 +57,9 @@ test("active profile menu is not clipped by its control-room card", () => {
   assert.match(css, /\.settings-profile-compact\.control-room-card\s*\{[^}]*overflow:\s*visible/is);
 });
 
-test("active profile accent rail stays inside its rounded card border", () => {
-  assert.match(css, /\.settings-profile-compact\.control-room-card::before\s*\{[^}]*inset:\s*1px auto 1px 1px[^}]*border-radius:\s*15px 0 0 15px[^}]*clip-path:\s*inset\(0 round 15px 0 0 15px\)/is);
+test("active profile accent rail follows the rounded card border", () => {
+  assert.match(css, /\.settings-profile-compact\.control-room-card\s*\{[^}]*box-shadow:\s*inset 4px 0 0 var\(--control-accent\),\s*var\(--shadow-sm\)/is);
+  assert.match(css, /\.settings-profile-compact\.control-room-card::before\s*\{[^}]*display:\s*none/is);
 });
 
 test("model reasoning editor uses a polished card hierarchy and pill controls", () => {

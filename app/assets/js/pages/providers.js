@@ -56,6 +56,13 @@ export const providerReviewData = value => ({
   models: (value.models || []).map(model => model.model).filter(Boolean),
   key: value.apiKey ? "Present" : "Not provided",
 });
+export const serializeProviderModels = (modelIds, existingModels = []) => {
+  const existing = new Map(existingModels.map(item => [item.model, item]));
+  return [...new Set((modelIds || []).map(model => String(model || "").trim()).filter(Boolean))].map(model => {
+    const saved = existing.get(model);
+    return { model, name: saved?.name || "", thinking: saved?.thinking || [] };
+  });
+};
 export async function switchProviderAgent(apiClient, nextAgent, currentAgent) {
   if (nextAgent === currentAgent) return false;
   if (nextAgent === "claude-code") await apiClient.claudeConnect();
@@ -90,6 +97,16 @@ function details(provider, trigger) {
   openDialog({ title: provider.name, eyebrow: "Provider details", variant: "details", headerMark: providerLogoMark(provider.name, { id: provider.id, size: "md" }), headerMeta: detailStatus(statusLabel, statusTone), trigger, content: detailView({ summary: `${detailSummaryItem("Status", statusLabel, statusTone)}${detailSummaryItem("Models", modelCount ? `${modelCount} configured` : "None", modelCount ? "active" : "muted")}${detailSummaryItem("Auth", provider.hasKey ? "Key stored" : "Not configured", provider.hasKey ? "active" : "muted")}`, sections: `${connection}${models}` }), actions: `<button class="button button--quiet" type="button" data-dialog-close>Close</button>` });
 }
 
+function providerModelCardMarkup(modelId = "", index = 1) {
+  return '<div class="provider-model-card" data-provider-model-card><div class="provider-model-card__main"><span class="provider-model-card__index">' + String(index).padStart(2, "0") + '</span><label><span>Model ID</span><input class="provider-model-id" aria-label="Model ID ' + index + '" autocomplete="off" value="' + escapeHtml(modelId) + '"></label></div><button type="button" class="provider-model-card__remove" aria-label="Remove model" data-provider-model-remove>×</button></div>';
+}
+
+function providerModelField(provider) {
+  const models = provider?.models || [];
+  const cards = models.map((model, index) => providerModelCardMarkup(model.model, index + 1)).join("");
+  const emptyState = '<p class="provider-model-empty" data-provider-model-empty>No models added yet. Add one below.</p>';
+  return '<div class="field provider-model-field"><div class="provider-model-field__head"><div><label>Models</label><p>Remove a model before testing or saving to leave it out of the generated config.</p></div><strong data-provider-model-count>' + models.length + ' configured</strong></div><div id="providerModelCards" class="provider-model-cards">' + (cards || emptyState) + '</div><div class="provider-model-add"><input id="providerNewModel" aria-label="New model ID" placeholder="provider/model-id" autocomplete="off"><button class="button button--secondary" type="button" data-add-provider-model>＋&nbsp; Add model</button></div><textarea id="providerModels" hidden aria-hidden="true">' + escapeHtml(models.map(model => model.model).join("\n")) + '</textarea></div>';
+}
 function providerForm(provider) {
   const models = (provider?.models || []).map(model => model.model).join("\n");
   const formatOptions = (store.get().formats.length ? store.get().formats : [{ id: "opencode", label: "OpenCode" }, { id: "openai", label: "OpenAI" }, { id: "claude", label: "Claude-style" }, { id: "gemini", label: "Gemini-style" }, { id: "none", label: "No reasoning" }]).map(format => `<option value="${escapeHtml(format.id)}" ${format.id === (provider?.reasoningFormat || "opencode") ? "selected" : ""}>${escapeHtml(format.label)}</option>`).join("");
@@ -110,6 +127,8 @@ export function openProviderDialog(provider = null, trigger = document.activeEle
   const { dialog, close } = openDialog({ title: provider ? `Edit ${provider.name}` : "Add a provider", content: providerForm(provider), actions, wide: true, trigger, onClose: () => document.body.classList.remove("provider-panel-active") });
   dialog.classList.add("provider-dialog");
   dialog.closest(".dialog-backdrop")?.classList.add("provider-panel-backdrop");
+  const legacyModels = dialog.querySelector("#providerModels");
+  if (legacyModels) legacyModels.closest(".field").outerHTML = providerModelField(provider);
   const form = dialog.querySelector("#providerForm"), fields = [...form.querySelectorAll(":scope > .field")];
   const groups = provider ? [[], fields.slice(0, 5), [fields[5]], [], []] : [[fields[0]], fields.slice(1, 6), [fields[6]], [], []];
   const panelNames = [provider ? "Provider overview" : "Choose a preset", "Configure connection", "Choose models", "Test connection", "Review and save"];
@@ -130,6 +149,48 @@ export function openProviderDialog(provider = null, trigger = document.activeEle
   const preset = dialog.querySelector("#providerPreset");
   preset?.addEventListener("change", () => { const value = presets[preset.value]; if (!value) return; dialog.querySelector("#providerUrl").value = value.baseUrl; dialog.querySelector("#providerSdk").value = value.npm; dialog.querySelector("#providerFormat").value = value.reasoningFormat; if (!dialog.querySelector("#providerName").value && preset.value !== "Custom") dialog.querySelector("#providerName").value = preset.value; });
   const existingModels = provider?.models || [];
+  const modelCards = dialog.querySelector("#providerModelCards");
+  const newModel = dialog.querySelector("#providerNewModel");
+  const modelSource = dialog.querySelector("#providerModels");
+  const syncModelSource = () => {
+    const ids = [...modelCards.querySelectorAll(".provider-model-id")].map(input => input.value);
+    const serialized = serializeProviderModels(ids, existingModels);
+    modelSource.value = serialized.map(item => item.model).join("\n");
+    const count = ids.filter(model => model.trim()).length;
+    dialog.querySelector("[data-provider-model-count]").textContent = count + " configured";
+    const empty = dialog.querySelector("[data-provider-model-empty]");
+    if (empty) empty.hidden = count > 0;
+  };
+  const addModel = () => {
+    const value = newModel.value.trim();
+    if (!value) {
+      newModel.focus();
+      return;
+    }
+    const index = modelCards.querySelectorAll(".provider-model-card").length + 1;
+    modelCards.insertAdjacentHTML("beforeend", providerModelCardMarkup(value, index));
+    newModel.value = "";
+    syncModelSource();
+    modelCards.lastElementChild?.querySelector(".provider-model-id")?.focus();
+  };
+  modelCards.addEventListener("input", syncModelSource);
+  modelCards.addEventListener("click", event => {
+    const remove = event.target.closest("[data-provider-model-remove]");
+    if (!remove) return;
+    remove.closest("[data-provider-model-card]")?.remove();
+    modelCards.querySelectorAll(".provider-model-card").forEach((card, index) => {
+      card.querySelector(".provider-model-card__index").textContent = String(index + 1).padStart(2, "0");
+      card.querySelector(".provider-model-id").setAttribute("aria-label", "Model ID " + (index + 1));
+    });
+    syncModelSource();
+  });
+  dialog.querySelector("[data-add-provider-model]")?.addEventListener("click", addModel);
+  newModel.addEventListener("keydown", event => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    addModel();
+  });
+  syncModelSource();
   const values = () => ({ name: dialog.querySelector("#providerName").value.trim(), baseUrl: dialog.querySelector("#providerUrl").value.trim(), npm: dialog.querySelector("#providerSdk").value.trim(), apiKey: dialog.querySelector("#providerKey").value.trim(), reasoningFormat: dialog.querySelector("#providerFormat").value, models: dialog.querySelector("#providerModels").value.split(/\r?\n/).map(model => model.trim()).filter(Boolean).map(model => { const existing = existingModels.find(item => item.model === model); return { model, name: existing?.name || "", thinking: existing?.thinking || [] }; }) });
   const testStatus = dialog.querySelector("#providerTestStatus");
   const setTestStatus = (state, text) => {
@@ -161,7 +222,7 @@ export function openProviderDialog(provider = null, trigger = document.activeEle
   let step = 0, completed = 0;
   const stepButtons = [...dialog.querySelectorAll(".segment button")];
   const back = dialog.querySelector("[data-step-back]"), next = dialog.querySelector("[data-step-next]"), testButton = dialog.querySelector("[data-test-form]"), saveButton = dialog.querySelector("button[form='providerForm']");
-  const stepTargets = [provider ? "#providerName" : "#providerPreset", "#providerName", "#providerModels", "[data-test-form]", "button[form='providerForm']"];
+  const stepTargets = [provider ? "#providerName" : "#providerPreset", "#providerName", "#providerNewModel", "[data-test-form]", "button[form='providerForm']"];
   const renderReview = () => {
     const review = providerReviewData(values());
     const panel = panels[4];

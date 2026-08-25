@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 let editor = {};
@@ -103,4 +104,48 @@ test("reasoning choices follow the selected model format", () => {
   assert.doesNotMatch(editor.thinkingLevelMarkup("openai"), /data-reasoning-level="max"/);
   assert.match(editor.thinkingLevelMarkup("claude"), /data-reasoning-level="max"/);
   assert.match(editor.thinkingLevelMarkup("none"), /No reasoning choices/);
+});
+
+test("model editor preserves per-model reasoning metadata for untouched models", () => {
+  assert.equal(typeof editor.normalizeModelBatch, "function");
+  const result = editor.normalizeModelBatch(
+    [
+      { model: "existing/openai", name: "Existing OpenAI", apiModelId: "gateway/openai", reasoningFormat: "openai", thinking: ["low", "high"] },
+      { model: "existing/claude", name: "Existing Claude", reasoningFormat: "claude", thinking: ["max"] },
+    ],
+    [{ model: "new/model", name: "New", reasoningFormat: "gemini", thinking: ["high"] }],
+    ["default", "minimal", "high", "max"],
+  );
+  assert.deepEqual(result.models.find(model => model.model === "existing/openai"), {
+    model: "existing/openai",
+    name: "Existing OpenAI",
+    apiModelId: "gateway/openai",
+    reasoningFormat: "openai",
+    thinking: ["low", "high"],
+  });
+  assert.equal(result.models.find(model => model.model === "existing/claude").reasoningFormat, "claude");
+});
+
+test("Settings wiring sends the complete model list and reads per-model formats", () => {
+  const source = readFileSync(new URL("../assets/js/pages/settings.js", import.meta.url), "utf8");
+  assert.match(source, /models: result\.models/);
+  assert.match(source, /const updatedModels = updateModelReasoning/);
+  assert.match(source, /model\.reasoningFormat \|\| provider\.reasoningFormat/);
+});
+
+test("reasoning updates replace one model without dropping its siblings", () => {
+  assert.equal(typeof editor.updateModelReasoning, "function");
+  const result = editor.updateModelReasoning(
+    [
+      { model: "first", name: "First", reasoningFormat: "opencode", thinking: ["high"] },
+      { model: "second", name: "Second", reasoningFormat: "claude", thinking: ["max"] },
+    ],
+    "first",
+    ["none", "high"],
+    "openai",
+  );
+  assert.deepEqual(result, [
+    { model: "first", name: "First", reasoningFormat: "openai", thinking: ["none", "high"] },
+    { model: "second", name: "Second", reasoningFormat: "claude", thinking: ["max"] },
+  ]);
 });

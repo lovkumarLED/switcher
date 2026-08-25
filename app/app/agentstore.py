@@ -365,6 +365,35 @@ def resolve_format(format_id=None):
     return "opencode"
 
 
+def _model_reasoning_format(entry, fallback=None):
+    """Resolve a model's format, including legacy files without metadata."""
+    saved = entry.get("reasoningFormat") if isinstance(entry, dict) else None
+    if isinstance(saved, str) and saved in REASONING_FORMATS:
+        return saved
+    variants = (entry.get("variants") or {}) if isinstance(entry, dict) else {}
+    keys = {key for key in variants if isinstance(key, str)}
+    values = [value for value in variants.values() if isinstance(value, dict)]
+    if any("thinking" in value for value in values):
+        return "claude"
+    if any("thinkingConfig" in value for value in values):
+        return "gemini"
+    if "none" in keys or "xhigh" in keys:
+        return "openai"
+    if "default" in keys:
+        return "opencode"
+    if "max" in keys and "low" in keys and "minimal" not in keys:
+        return "claude"
+    if "minimal" in keys and "medium" in keys:
+        return "gemini"
+    candidates = [
+        format_id for format_id, spec in REASONING_FORMATS.items()
+        if format_id != "none" and keys and keys.issubset(set(spec["levels"]))
+    ]
+    if len(candidates) == 1:
+        return candidates[0]
+    return resolve_format(fallback)
+
+
 def models_file(agent_dir, provider_id, profile=None):
     _require_valid_provider_id(provider_id)
     return profile_dir(agent_dir, profile) / f"{provider_id}-models.json"
@@ -385,6 +414,7 @@ def read_models(agent_dir, provider_id, profile=None, format_id=None):
             "name": entry.get("name") or model_id,
             "apiModelId": api_model_id if isinstance(api_model_id, str) and api_model_id.strip() else "",
             "thinking": thinking,
+            "reasoningFormat": _model_reasoning_format(entry, format_id),
         })
     result.sort(key=lambda m: m["model"])
     return result
@@ -395,13 +425,14 @@ def write_models(agent_dir, provider_id, items, profile=None, format_id=None, re
     path = models_file(agent_dir, provider_id, profile)
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = _read_json(path, {})
+    existing_models = dict(existing.get("models") or {})
     _backup(path)
-    models = {} if replace else dict(existing.get("models") or {})
+    models = {} if replace else dict(existing_models)
     for item in items or []:
         model_id = item.get("model")
         if not model_id:
             continue
-        entry = dict(models.get(model_id) or {})
+        entry = dict(existing_models.get(model_id) or {}) if replace else dict(models.get(model_id) or {})
         entry["name"] = item.get("name") or model_id
         api_model_id = item.get("apiModelId")
         if isinstance(api_model_id, str) and api_model_id.strip():
@@ -409,10 +440,11 @@ def write_models(agent_dir, provider_id, items, profile=None, format_id=None, re
         else:
             entry.pop("apiModelId", None)
         explicit_format = bool(item.get("reasoningFormat"))
-        item_format = resolve_format(item.get("reasoningFormat") or fmt)
+        previous_variants = dict(entry.get("variants") or {})
+        previous_format = _model_reasoning_format(entry, fmt)
+        item_format = resolve_format(item.get("reasoningFormat") or previous_format)
         spec = REASONING_FORMATS[item_format]
         allowed = set(spec["levels"])
-        previous_variants = dict(entry.get("variants") or {})
         variants = {}
         requested = item.get("thinking") or []
         if not requested and not explicit_format:
@@ -422,6 +454,7 @@ def write_models(agent_dir, provider_id, items, profile=None, format_id=None, re
                 variants[level] = previous_variants[level]
             elif level in allowed and spec["variant"] is not None:
                 variants[level] = spec["variant"](level)
+        entry["reasoningFormat"] = item_format
         entry["variants"] = variants
         models[model_id] = entry
     existing["models"] = models

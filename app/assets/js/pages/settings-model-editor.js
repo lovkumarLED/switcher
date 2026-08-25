@@ -53,6 +53,7 @@ export function normalizeModelBatch(existingModels, candidates, allowedLevels = 
     model: String(model?.model || "").trim(),
     name: String(model?.name || "").trim(),
     apiModelId: String(model?.apiModelId || "").trim(),
+    ...(String(model?.reasoningFormat || "").trim() ? { reasoningFormat: String(model.reasoningFormat).trim() } : {}),
     thinking: [...new Set(model?.thinking || [])],
   }));
   const map = new Map(existing.map(model => [model.model.toLowerCase(), model]));
@@ -69,6 +70,12 @@ export function normalizeModelBatch(existingModels, candidates, allowedLevels = 
   const models = [...map.values()];
   if (!models.length) throw new Error("Add at least one model ID.");
   return { added: models.filter(model => changed.has(model.model.toLowerCase())), models };
+}
+
+export function updateModelReasoning(models, modelId, thinking, reasoningFormat) {
+  return (models || []).map(model => model.model === modelId
+    ? { ...model, thinking: [...new Set(thinking || [])], reasoningFormat }
+    : model);
 }
 
 export function modelEditorRowMarkup(index, formats = [], selectedFormat = "opencode") {

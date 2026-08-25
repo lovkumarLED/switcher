@@ -14,6 +14,10 @@
                         "type": "string",
                         "description": "Optional exact model ID sent to the gateway. Defaults to this entry's key. Use when the gateway expects a different ID than the one shown in the app (for example OrcaRouter expects its own catalog name)."
                     },
+                    "reasoningFormat": {
+                        "type": "string",
+                        "description": "Optional per-model reasoning format. When omitted, the provider format is used."
+                    },
                     "variants": {
                         "type": "object",
                         "description": "Named reasoning overlays (e.g. { low: { reasoningEffort: low } }). Supported settings keys include reasoningEffort, thinking.budgetTokens, thinkingConfig.thinkingBudget; additional keys are allowed and pass through unchanged."

@@ -2,7 +2,7 @@ import { api, optional } from "../core/api.js";
 import { escapeHtml, notify, openDialog } from "../core/dialog.js";
 import { reducedMotion, setMotionPreference } from "../core/motion.js";
 import { isClaude } from "../core/capabilities.js";
-import { levelsForProvider, modelEditorMarkup, modelEditorRowMarkup, normalizeModelBatch, thinkingLevelMarkup } from "./settings-model-editor.js";
+import { levelsForProvider, modelEditorMarkup, modelEditorRowMarkup, normalizeModelBatch, thinkingLevelMarkup, updateModelReasoning } from "./settings-model-editor.js";
 import { modelManagerRows, settingsWorkspaceMarkup } from "./settings-workspace.js";
 
 const CLAUDE_RESTART_NOTICE = "Restarting Claude Code may be required for startup-only values.";
@@ -108,7 +108,7 @@ function openAddModelDialog(trigger, provider, formats, onSaved) {
         reasoningFormat: row.querySelector("[data-reasoning-format]:checked")?.value || selectedFormat,
       }));
       const result = normalizeModelBatch(provider.models || [], candidates, levels);
-      await api.updateProvider(provider.id, { reasoningFormat: selectedFormat, models: result.added });
+      await api.updateProvider(provider.id, { reasoningFormat: selectedFormat, models: result.models });
       provider.reasoningFormat = selectedFormat;
       provider.models = result.models;
       close(); notify(`${result.added.length} model${result.added.length === 1 ? "" : "s"} added to ${provider.name}.`, "success"); onSaved();
@@ -197,18 +197,23 @@ export async function renderSettings(workspace) {
       option.textContent = format.label;
       return option;
     }));
-    const currentFormat = provider.reasoningFormat || "opencode";
+    const currentFormat = model.reasoningFormat || provider.reasoningFormat || "opencode";
     reasoningFormatSelect.value = formats.some(f => f.id === currentFormat) ? currentFormat : "opencode";
-    renderReasoningLevels();
+    renderReasoningLevels(model.thinking || []);
     reasoningSaved.textContent = "";
   };
 
-  const renderReasoningLevels = () => {
+  const renderReasoningLevels = (selectedLevels = []) => {
     const selectedFormat = reasoningFormatSelect?.value || "opencode";
+    const selected = new Set(selectedLevels || []);
     reasoningLevels.innerHTML = levelsForProvider({ reasoningFormat: selectedFormat }, formats)
-      .map(level => `<button type="button" data-reasoning-level="${escapeHtml(level)}" aria-pressed="false">${escapeHtml(level)}</button>`).join("");
+      .map(level => `<button type="button" data-reasoning-level="${escapeHtml(level)}" aria-pressed="${String(selected.has(level))}">${escapeHtml(level)}</button>`).join("");
   };
-  reasoningFormatSelect?.addEventListener("change", renderReasoningLevels);
+  reasoningFormatSelect?.addEventListener("change", () => {
+    const provider = selectedProvider();
+    const model = provider?.models?.find(item => item.model === modelSelect?.value);
+    renderReasoningLevels(model?.thinking || []);
+  });
   reasoningLevels?.addEventListener("click", event => {
     const button = event.target.closest("[data-reasoning-level]");
     if (!button) return;
@@ -222,8 +227,9 @@ export async function renderSettings(workspace) {
     const levels = [...reasoningLevels.querySelectorAll("[data-reasoning-level][aria-pressed='true']")].map(b => b.dataset.reasoningLevel);
     reasoningSaved.textContent = "Saving…";
     try {
-      await api.updateProvider(provider.id, { models: [{ model: modelId, name: (provider.models.find(m => m.model === modelId) || {}).name || modelId, thinking: levels, reasoningFormat: format }] });
-      provider.models = provider.models.map(m => m.model === modelId ? { ...m, thinking: levels } : m);
+      const updatedModels = updateModelReasoning(provider.models || [], modelId, levels, format);
+      await api.updateProvider(provider.id, { models: updatedModels });
+      provider.models = updatedModels;
       reasoningSaved.textContent = "Saved. Run Build my config to apply.";
       notify("Reasoning saved for the selected model.", "success");
     } catch (error) {

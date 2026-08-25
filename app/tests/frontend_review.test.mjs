@@ -127,14 +127,14 @@ test("provider review excludes the raw key", () => {
 
 test("provider model serialization keeps only the models still present in the editor", () => {
   const existing = [
-    { model: "deepseek-v4-flash-0731", name: "DeepSeek V4 Flash", thinking: ["high"] },
+    { model: "deepseek-v4-flash-0731", name: "DeepSeek V4 Flash", apiModelId: "deepseek-v4-flash-0731", reasoningFormat: "openai", thinking: ["high"] },
     { model: "deepseek-v4-flash-free", name: "DeepSeek V4 Flash Free", thinking: ["default"] },
-    { model: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", thinking: [] },
+    { model: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", apiModelId: "", reasoningFormat: "", thinking: [] },
   ];
   const serialized = serializeProviderModels(["deepseek-v4-flash-0731", "gemini-3.5-flash-lite"], existing);
   assert.deepEqual(serialized, [
-    { model: "deepseek-v4-flash-0731", name: "DeepSeek V4 Flash", thinking: ["high"] },
-    { model: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", thinking: [] },
+    { model: "deepseek-v4-flash-0731", name: "DeepSeek V4 Flash", apiModelId: "deepseek-v4-flash-0731", reasoningFormat: "openai", thinking: ["high"] },
+    { model: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite", apiModelId: "", reasoningFormat: "", thinking: [] },
   ]);
   assert.equal(serialized.some(item => item.model === "deepseek-v4-flash-free"), false);
 });
@@ -151,6 +151,7 @@ test("provider edit review uses the detail-style summary and visible test state"
 test("editing a saved provider replaces the preset chooser with an overview", () => {
   const source = readFileSync(new URL("../assets/js/pages/providers.js", import.meta.url), "utf8");
   assert.match(source, /provider-edit-intro/);
+  assert.match(source, /models: serializeProviderModels/);
   assert.match(source, /provider \? "Overview" : "Choose"/);
   assert.match(source, /const presetField = provider \? "" :/);
   assert.match(source, /preset\?\.addEventListener/);

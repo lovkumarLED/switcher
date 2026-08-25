@@ -17,20 +17,26 @@ Copy this block into Entries when a fix lands:
 ```
 
 ## Entries
+### 2026-08-26 - Provider model reasoning metadata and sibling models were lost during saves
+
+- **Symptom:** Removing one LiteLLM model and saving rewrote the remaining models with only the `high` reasoning variant. Saving a model’s reasoning format from Settings could also remove another provider model, and the generated OpenCode/Kilo JSON inherited the loss.
+- **Root cause:** Provider edits did not carry per-model reasoning metadata, so the backend used the provider-level format when replacing retained models. Settings and Add models sent only the changed/additional models while the backend correctly treated provider updates as replacement lists. The reasoning controls also rendered every level unselected on model load.
+- **Fix:** `agentstore` now infers legacy per-model formats from existing variants, persists `reasoningFormat` per model, and preserves retained entries during replacement. Provider and Settings serializers carry model metadata; Settings marks saved levels and submits the complete model list. The model schema documents the per-model field.
+- **Verified:** Focused backend/frontend regressions pass; isolated temporary OpenCode and Kilo builders retain the two kept models with all five OpenAI variants and omit the removed model.
 
 ### 2026-08-25 - Provider edits did not remove deleted models from the build
 
 - **Symptom:** Removing a model in Edit provider showed a successful save, but Manage models and the next builder run still contained the deleted model.
-- **Root cause:** Provider updates reused the additive model writer used by Manage models, so the submitted model list was merged with the existing file instead of replacing it.
-- **Fix:** `agentstore.write_models` now supports explicit replace semantics, and provider PUT updates use `replace=True`; Manage models keeps its additive behavior. The provider wizard’s Save and Test steps now also use structured review data, a visible connection-test status indicator, and an edit overview instead of an irrelevant preset chooser.
-- **Verified:** Provider replacement regression coverage passes; the full Python suite passes 275/275 and the full frontend suite passes 201/201.
+- **Root cause:** The edit form represented models as a free-form newline list while the save path could still be treated like the additive Manage models flow. A removed ID therefore remained in persisted model data and was later reintroduced into builder output.
+- **Fix:** Provider edits now render each model as a compact removable card, keep a normalized hidden model source synchronized with the visible cards, and serialize only the IDs still present while preserving their saved metadata. Provider PUT updates use replacement semantics (`replace=True`); Manage models keeps its separate additive/delete behavior. The edit wizard also uses structured review data, a visible connection-test status indicator, and an edit overview instead of an irrelevant preset chooser.
+- **Verified:** The model-removal regression passes; the full Python suite passes 275/275, the full frontend suite passes 203/203, OpenCode passes 40/40, KiloCode passes 37/37, and isolated temporary OpenCode/KiloCode builds omit the removed model while retaining the other models.
 
 ### 2026-08-25 - Active profile accent rail crossed the rounded card border
 
 - **Symptom:** The purple rail on the Active profile card extended into the card’s rounded corners instead of following the border.
 - **Root cause:** The card intentionally uses `overflow: visible` so its profile menu can open below it. That bypassed the shared control-room card clipping, and the earlier rail inset did not provide an independent clipping boundary.
-- **Fix:** `settings-workspace.css` now insets the rail from the border and clips its pseudo-element to the matching rounded left corners, without clipping the profile menu.
-- **Verified:** The visual contract proves both behaviors: the menu remains unclipped and the rail has the inset, rounded geometry, and independent clip path.
+- **Fix:** `settings-workspace.css` now renders the accent as an inset box shadow on the card itself and disables the old pseudo-element rail. The profile menu remains unclipped while the accent terminates inside the same rounded card boundary.
+- **Verified:** The visual contract proves the inset accent and disabled pseudo-element; the full frontend suite passes 203/203.
 
 ### 2026-08-24 - Claude Code Apply left every route card pending
 

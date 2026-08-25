@@ -60,7 +60,7 @@ export const serializeProviderModels = (modelIds, existingModels = []) => {
   const existing = new Map(existingModels.map(item => [item.model, item]));
   return [...new Set((modelIds || []).map(model => String(model || "").trim()).filter(Boolean))].map(model => {
     const saved = existing.get(model);
-    return { model, name: saved?.name || "", thinking: saved?.thinking || [] };
+    return { model, name: saved?.name || "", apiModelId: saved?.apiModelId || "", reasoningFormat: saved?.reasoningFormat || "", thinking: saved?.thinking || [] };
   });
 };
 export async function switchProviderAgent(apiClient, nextAgent, currentAgent) {
@@ -191,7 +191,7 @@ export function openProviderDialog(provider = null, trigger = document.activeEle
     addModel();
   });
   syncModelSource();
-  const values = () => ({ name: dialog.querySelector("#providerName").value.trim(), baseUrl: dialog.querySelector("#providerUrl").value.trim(), npm: dialog.querySelector("#providerSdk").value.trim(), apiKey: dialog.querySelector("#providerKey").value.trim(), reasoningFormat: dialog.querySelector("#providerFormat").value, models: dialog.querySelector("#providerModels").value.split(/\r?\n/).map(model => model.trim()).filter(Boolean).map(model => { const existing = existingModels.find(item => item.model === model); return { model, name: existing?.name || "", thinking: existing?.thinking || [] }; }) });
+  const values = () => ({ name: dialog.querySelector("#providerName").value.trim(), baseUrl: dialog.querySelector("#providerUrl").value.trim(), npm: dialog.querySelector("#providerSdk").value.trim(), apiKey: dialog.querySelector("#providerKey").value.trim(), reasoningFormat: dialog.querySelector("#providerFormat").value, models: serializeProviderModels(dialog.querySelector("#providerModels").value.split(/\r?\n/), existingModels) });
   const testStatus = dialog.querySelector("#providerTestStatus");
   const setTestStatus = (state, text) => {
     testStatus.dataset.state = state;
